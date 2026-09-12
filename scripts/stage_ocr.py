@@ -48,7 +48,20 @@ def main():
                 dependencies=re.findall(r'=> (/\S+)',output)
             for dependency in dependencies:
                 dep=Path(dependency)
-                if not dep.is_absolute() or not dep.exists():continue
+                if sys.platform=='darwin' and dependency.startswith('@'):
+                    def expand(value):
+                        return value.replace('@loader_path',str(original.parent)).replace('@executable_path',str(args.executable.resolve().parent))
+                    candidates=[Path(expand(dependency))]
+                    if dependency.startswith('@rpath/'):
+                        commands=subprocess.check_output(['otool','-l',str(original)],text=True)
+                        rpaths=re.findall(r'cmd LC_RPATH\s+cmdsize \d+\s+path (.*?) \(offset',commands)
+                        suffix=dependency[len('@rpath/'):]
+                        candidates=[Path(expand(value))/suffix for value in rpaths]+[original.parent/suffix]
+                    dep=next((candidate for candidate in candidates if candidate.is_file()),dep)
+                if not dep.is_absolute() or not dep.exists():
+                    if sys.platform=='darwin' and dependency.startswith('@'):
+                        raise RuntimeError(f'Cannot resolve portable OCR dependency {dependency} from {original}')
+                    continue
                 if sys.platform=='darwin' and (dependency.startswith('/usr/lib/') or dependency.startswith('/System/')):continue
                 if sys.platform!='darwin' and dep.name.startswith(('libc.so','libm.so','libpthread.so','libdl.so','librt.so','ld-linux')):continue
                 copied=libdir/dep.name

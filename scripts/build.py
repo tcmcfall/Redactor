@@ -33,6 +33,7 @@ def main():
     if args.clean:
         command.append("--clean")
     if sys.platform == "darwin":
+        command += ['--runtime-hook', str(ROOT / 'scripts/packaged_diagnostics.py')]
         # Source-built cryptography can require newer OpenSSL than Python's
         # bundled copy. Give its actual dependencies precedence during collection.
         import cryptography.hazmat.bindings._rust as rust

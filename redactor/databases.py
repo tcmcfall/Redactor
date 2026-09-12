@@ -21,7 +21,7 @@ class Database(Vault):
             raise
 
     def close(self):
-        self.data.clear(); self.key = b''
+        super().close()
 
     @property
     def password_age(self): return self.account.password_age

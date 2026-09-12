@@ -199,4 +199,5 @@ class Vault:
 
     def close(self) -> None:
         self.data.clear()
+        self._saved_mappings.clear()
         self.key = b""

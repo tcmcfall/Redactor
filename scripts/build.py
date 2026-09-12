@@ -32,6 +32,14 @@ def main():
     if args.clean:
         command.append("--clean")
     if sys.platform == "darwin":
+        # Source-built cryptography can require newer OpenSSL than Python's
+        # bundled copy. Give its actual dependencies precedence during collection.
+        import cryptography.hazmat.bindings._rust as rust
+        dependencies = subprocess.check_output(['otool', '-L', rust.__file__], text=True)
+        for line in dependencies.splitlines()[1:]:
+            library = Path(line.strip().split(' (')[0])
+            if library.name.startswith(('libssl.', 'libcrypto.')) and library.is_file():
+                command += ['--add-binary', str(library) + os.pathsep + '.']
         command += ["--osx-bundle-identifier", "local.redactor.desktop"]
         if os.environ.get("REDACTOR_CODESIGN_IDENTITY"):
             command += ["--codesign-identity", os.environ["REDACTOR_CODESIGN_IDENTITY"]]

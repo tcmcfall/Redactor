@@ -27,7 +27,7 @@ jobs:
       - run: python -m pip install ".[dev]"
       - run: python -m pytest -q
         env:
-          QT_QPA_PLATFORM: offscreen
+          QT_QPA_PLATFORM: ${{ runner.os == 'Windows' && 'windows' || 'offscreen' }}
       - name: Stage native macOS OCR
         if: runner.os == 'macOS'
         shell: bash
@@ -44,9 +44,9 @@ jobs:
       - name: Test packaged application
         shell: bash
         run: |
-          python -c "import pathlib, subprocess, sys; p = pathlib.Path('dist/Redactor/Redactor.exe') if sys.platform == 'win32' else pathlib.Path('dist/Redactor-portable/Redactor.app/Contents/MacOS/Redactor'); subprocess.run([str(p.resolve()), '--smoke-test', str(pathlib.Path('packaged-check').resolve())], check=True, timeout=120)"
+          python -c "import pathlib, subprocess, sys; p = pathlib.Path('dist/Redactor/Redactor.exe') if sys.platform == 'win32' else pathlib.Path('dist/Redactor-portable/Redactor.app/Contents/MacOS/Redactor'); r = subprocess.run([str(p.resolve()), '--smoke-test', str(pathlib.Path('packaged-check').resolve())], timeout=120); report = pathlib.Path('packaged-check/smoke-report.json'); print(report.read_text() if report.exists() else 'No smoke report produced'); sys.exit(r.returncode)"
         env:
-          QT_QPA_PLATFORM: offscreen
+          QT_QPA_PLATFORM: ${{ runner.os == 'Windows' && 'windows' || 'offscreen' }}
       - name: Archive application on macOS
         if: runner.os == 'macOS'
         run: ditto -c -k --sequesterRsrc --keepParent dist/Redactor-portable dist/Redactor-macOS.zip

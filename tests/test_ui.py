@@ -300,9 +300,15 @@ def test_no_matches_keeps_editable_input(window,qtbot):
 
 
 def test_lock_clears_all_database_workspace_and_audit_caches(window,qtbot):
+    window.account_vault._saved_mappings=[{'original':'Private mapping snapshot'}]
+    window.candidate_filters.allowed[1]={'Private filter'}
+    window.vault_filters.allowed[0]={'Private vault filter'}
     window.workspace_states[1]={'input':'Private cached text'}
     window.audit_events=[{'input_text':'Sensitive audit cache'}]
     window.relock=True
     window.close()
     assert window.workspace_states=={} and window.audit_events==[]
     assert not window.account_vault.data
+    assert not window.account_vault._saved_mappings
+    assert window.table.rowCount()==0
+    assert not window.candidate_filters.allowed and not window.vault_filters.allowed

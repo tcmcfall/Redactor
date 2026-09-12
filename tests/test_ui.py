@@ -127,6 +127,11 @@ def test_multirow_shift_ctrl_and_bulk_marking(window, qtbot):
 
 
 def test_inner_panes_resize_independently(window, qtbot):
+    # Small CI desktops can pin both panes at their minimum heights.
+    # Give this resizing check enough geometry to exercise both directions.
+    window.workspace_splitter.setMinimumHeight(700)
+    window.resize(1400, 1200)
+    qtbot.wait(20)
     window.editor_splitter.setSizes([250, 650])
     qtbot.wait(20)
     left, right = window.editor_splitter.sizes()

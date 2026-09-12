@@ -5,6 +5,10 @@ This developer tool is not imported or called by the application. On Unix it
 copies non-system dependencies; macOS install names are rewritten locally.
 """
 import argparse
+import hashlib
+import json
+import tarfile
+import urllib.request
 import os
 from pathlib import Path
 import re
@@ -13,6 +17,53 @@ import subprocess
 import sys
 
 ROOT=Path(__file__).resolve().parents[1]
+
+
+
+def preserve_macos_sources(originals, target):
+    """Keep exact installed Homebrew recipes, verified sources and notices."""
+    sources=target/'source';notices=target/'licenses'
+    sources.mkdir(exist_ok=True);notices.mkdir(exist_ok=True)
+    kegs=set()
+    for original in originals:
+        if 'Cellar' in original.parts:
+            index=original.parts.index('Cellar')
+            kegs.add(Path(*original.parts[:index+3]))
+    records=[]
+    for keg in sorted(kegs):
+        name=keg.parent.name
+        recipe=keg/'.brew'/f'{name}.rb'
+        formula=recipe.read_text()
+        url=re.search(r'^\s*url "([^"\n]+)"',formula,re.M)
+        digest=re.search(r'^\s*sha256 "([a-f0-9]{64})"',formula,re.M)
+        if not url or not digest:raise RuntimeError(f'Cannot identify source checksum in {recipe}')
+        urls=[url.group(1),*re.findall(r'^\s*mirror "([^"\n]+)"',formula,re.M)]
+        archive=sources/f'{name}-{keg.name}.source'
+        for address in urls:
+            try:
+                request=urllib.request.Request(address,headers={'User-Agent':'Redactor-native-source-builder'})
+                with urllib.request.urlopen(request,timeout=90) as response,archive.open('wb') as output:
+                    shutil.copyfileobj(response,output)
+                with archive.open('rb') as stream:actual=hashlib.file_digest(stream,'sha256').hexdigest()
+                if actual!=digest.group(1):raise ValueError('Native source checksum mismatch')
+                break
+            except Exception:
+                archive.unlink(missing_ok=True)
+                if address==urls[-1]:raise
+        shutil.copy2(recipe,sources/f'{name}-{keg.name}.rb')
+        count=0
+        with tarfile.open(archive,'r:*') as package:
+            for member in package.getmembers():
+                relative=Path(member.name)
+                if not member.isfile() or member.size>10_000_000 or relative.is_absolute() or '..' in relative.parts:continue
+                if not relative.name.lower().startswith(('license','copying','copyright','notice')):continue
+                destination=notices/name/relative
+                destination.parent.mkdir(parents=True,exist_ok=True)
+                with package.extractfile(member) as source,destination.open('wb') as output:shutil.copyfileobj(source,output)
+                count+=1
+        if not count:raise RuntimeError(f'No license notices found for {name}; review before distributing')
+        records.append({'name':name,'installed_version':keg.name,'source_url':address,'sha256':actual,'notices':count})
+    (sources/'MANIFEST.json').write_text(json.dumps(records,indent=2),encoding='utf-8')
 
 
 def main():
@@ -78,6 +129,7 @@ def main():
         source=args.tessdata/name
         if source.exists():shutil.copy2(source,data/name)
     if not (data/'eng.traineddata').exists():raise SystemExit('English tessdata missing')
+    if sys.platform=='darwin':preserve_macos_sources(seen,target)
     executable = target/'tesseract.exe' if sys.platform=='win32' else target/'bin/tesseract'
     subprocess.run([str(executable), '--version'], check=True)
     print('Staged native portable OCR:',target)

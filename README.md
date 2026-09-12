@@ -6,7 +6,7 @@ A local desktop workspace for reviewable sensitive-data substitutions and exact 
 
 [Portable releases and source downloads](https://github.com/tcmcfall/Redactor/releases)
 
-## Portable version 0.2
+## Portable version 0.2.0
 
 The current `Redactor.exe` belongs directly in the portable root with `_internal`, `tools` and `data`. All application-owned files stay in that folder. Multiple database tabs share the authenticated local account; copy/paste and merge actions preview conflicts before saving. RAR exchange is offered when a licensed portable RAR encoder is supplied.
 
@@ -37,7 +37,7 @@ Create your own username and password at first launch. There are no default cred
 
 ## Read before use
 
-Detection is heuristic and requires review. This is a functional initial implementation, not a certified de-identification or government data-handling product. Exports reconstruct **reviewed text only**, without original layouts, graphics, formulas, metadata or embedded objects. Legacy Office formats require local conversion. AI-modified substitute spellings cannot be reliably restored automatically.
+Detection is heuristic and requires review. Redactor requires analyst review and does not certify de-identification or government data-handling compliance. Exports reconstruct **reviewed text only**, without original layouts, graphics, formulas, metadata or embedded objects. Legacy Office formats require local conversion. AI-modified substitute spellings cannot be reliably restored automatically.
 
 The app makes no network requests. Installation/build tooling can download dependencies. Vault encryption does not protect an already compromised computer or an unlocked screen.
 

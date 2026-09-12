@@ -19,7 +19,7 @@ Generate a standalone source package at any time:
 python scripts/package_source.py
 ```
 
-The resulting ZIP is written under `releases/`. Package source from the same checkout used to build the binaries. Do not pair an older source archive with a newer executable.
+The resulting ZIP is written under `releases/`. Package source from the same checkout used to build the binaries. Use the source archive that matches the executable.
 
 ## Updating Redactor
 

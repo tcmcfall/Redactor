@@ -14,10 +14,10 @@ The desktop popup has an Open Error Guide button. CLI errors print the code and 
 
 ## Overlapping sensitive data: concrete repair
 
-Two different situations used to receive similar messages:
+Two situations can produce overlap or collision errors:
 
-- **Selected span overlaps an excluded span.** Example: `IBM Corp` is selected but the `IBM` inside it is excluded. Replacing the larger phrase would violate your explicit exclusion. The new error names both values and character locations. Find those rows, then either include both (the longest selected phrase is applied once), or exclude the larger phrase and include only the smaller value you actually want replaced. The scope dropdown controls whether the edit affects this occurrence or all identical values.
-- **Replacement collides with an original or another replacement.** The new message identifies the replacement, its original and the conflicting sensitive value. Inspect Conversion vault as well as the current suggestion list. Edit the replacement or generate a fresh suggestion. An incidental fragment inside a word is no longer treated as a complete sensitive-value overlap. Consistent nested domain replacements are permitted and validated as a group.
+- **Selected span overlaps an excluded span.** Example: `IBM Corp` is selected but the `IBM` inside it is excluded. Replacing the larger phrase would violate your explicit exclusion. The error names both values and character locations. Find those rows, then either include both (the longest selected phrase is applied once), or exclude the larger phrase and include only the smaller value you actually want replaced. The scope dropdown controls whether the edit affects this occurrence or all identical values.
+- **Replacement collides with an original or another replacement.** The message identifies the replacement, its original and the conflicting sensitive value. Inspect Conversion vault as well as the current suggestion list. Edit the replacement or generate a fresh suggestion. An incidental fragment inside a word does not count as a complete sensitive-value overlap. Consistent nested domain replacements are permitted and validated as a group.
 
 Redundant automatic heuristic suggestions entirely contained in a longer value should be reviewed together; selecting both is valid and uses the longer value. Automatically selecting two values is not by itself an error. Do not deselect values randomly until output succeeds: that can leave originals visible.
 
@@ -88,7 +88,7 @@ A supported import with no sensitive matches stays open and editable. Add manual
 - Same length means Unicode characters, not font width. A document layout mismatch requires local formatting review; it is not repaired by relaxing the length check.
 - Unknown/altered returned substitute: lookup the original mapping, compare the source and correct the returned token explicitly. Restoration never fuzzy-guesses a replacement.
 - RAR unavailable: use ZIP/TAR/7z or place a licensed native RAR encoder inside tools/rar. Do not rename a ZIP file to .rar.
-- Import password rejected: use the export password, not the current local account password. The local account must already be unlocked. A legacy raw backup uses the password active when it was saved.
+- Import password rejected: use the export password, not the current local account password. The local account must already be unlocked.
 - Merge conflict: select fewer rows or choose a conflict policy after reviewing both versions. A proposed .com to .net change must cover every related suffix. Separate source databases remain intact if the destination validation fails.
 
 ## Locked files, permissions and interruption

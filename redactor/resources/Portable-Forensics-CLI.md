@@ -1,6 +1,6 @@
-# Redactor 0.2 User Guide supplement: portable analysis and command line
+# Redactor 0.2.0 User Guide supplement: portable analysis and command line
 
-This supplement replaces earlier instructions about installed locations, backups, network surrogates and summary-only audit records.
+This reference covers portable storage, forensic substitutions, database exchange, audit records and command-line operation.
 
 ## Portable folder and launch
 
@@ -10,7 +10,7 @@ On macOS, keep Redactor.app and its sibling data/tools folders together in one w
 
 The program creates `data/databases`, `data/logs`, `data/tmp` and `exports` beneath its portable root. Work-product and plaintext audit exports stay within that root, including resolved symlink targets. Password-protected database exchanges may be saved to any filename and writable location you choose, including a removable drive or a folder outside Redactor. Import can read a local file from another folder without changing it. There is no automatic download, telemetry, update check, remote authentication, or network lookup. Build/dependency acquisition and Git publishing are separate developer operations that use the network. Using a network-mounted folder causes operating-system filesystem traffic: use a local disk or removable drive for a physically offline workflow. The application itself does not initiate network communication. Its license URL is displayed for copying, not automatically opened.
 
-Older installed vaults are not discovered through a hidden fallback. Import an old encrypted `.vault` using its old password. Do not move old flat vault files directly into the new storage tree. Do not overwrite an existing analyst account. Preserve your only copy until the imported data has been verified.
+Use password-protected database exports for analyst handoffs. Preserve the export until the imported copy has been verified.
 
 ## Import and review
 
@@ -30,7 +30,7 @@ For IPv4 and IPv6, the program preserves address equality, IP version and pairwi
 
 Preserving topology and length intentionally reveals structural information. The generated addresses/domains may name real endpoints because reserved documentation ranges cannot satisfy every original length and prefix constraint. They are labels for offline analysis: never use them as live network targets. The program never contacts them. To preserve an additional relationship, encode and review it explicitly rather than assuming it was inferred.
 
-Length, uniqueness and a previously fixed prefix can conflict. **R003** blocks the conversion; it does not relax forensic accuracy. A new project vault allows the related group to be regenerated together. Custom edits are validated against the same rules. Old 0.1 replacements can still restore exactly, but they must be regenerated before use in a new strict-length conversion. Whimsical names are chosen where a suitable same-length choice exists; other values use format-shaped fictional strings. No implementation can guarantee unlimited distinct replacements for a finite short field.
+Length, uniqueness and a previously fixed prefix can conflict. **R003** blocks the conversion; it does not relax forensic accuracy. A new project vault allows the related group to be regenerated together. Custom edits are validated against the same rules. Whimsical names are chosen where a suitable same-length choice exists; other values use format-shaped fictional strings. No implementation can guarantee unlimited distinct replacements for a finite short field.
 
 ## Vault filtering and mass actions
 
@@ -54,14 +54,14 @@ Switch tabs to review independent workspaces. **Copy rows** / **Paste rows** (Ct
 
 **Merge…** opens a tree of other databases. Check a database to select all its mappings, or expand it to check individual entries. You may select multiple databases. The current tab is the destination. Conflicting originals prompt Keep current or Use incoming (retain old alias); an incompatible prefix, suffix, duplicate token or length blocks the whole proposal. Expand the final details to review incoming and resulting mappings. Cancel makes no changes. Source databases are unchanged. Mapping provenance and conflict choices are recorded in the destination audit; prior source audit histories remain available in their source tabs. A merge does not establish that two similarly named people or systems are the same real-world entity.
 
-Raw legacy encrypted `.vault` and `.redactor` files can be opened in the same way using their old password; they lack the archive checksum files. New users first create their local account, then open the export. Existing accounts never need to be shared with another analyst.
+Create a local account before opening a password-protected database export. Accounts never need to be shared with another analyst.
 
 
 ## Detailed audit and retirement
 
 Audit records include UTC timestamps with offset, the authenticated local username, operation, mapping IDs, before/after mapping snapshots, and exact touched input/output text for transformations. Text-change offsets use Unicode character indices. Import events record the extracted text and source filename. Errors record stable categories and recommended actions; diagnostic files exclude raw exception text, usernames and document values. Double-click an audit row to inspect its full JSON.
 
-The detailed audit is encrypted inside the vault. Exporting it as JSON exposes sensitive originals and requires confirmation. Hash-linked events support detecting accidental chain edits; a person with the vault password can rewrite the vault, so this is not an externally trusted or certified forensic chain of custody. Passwords are not recorded. History predating version 0.2 may lack exact changes and usernames; missing facts cannot be reconstructed.
+The detailed audit is encrypted inside the vault. Exporting it as JSON exposes sensitive originals and requires confirmation. Hash-linked events support detecting accidental chain edits; a person with the vault password can rewrite the vault, so this is not an externally trusted or certified forensic chain of custody. Passwords are not recorded.
 
 After final restoration, reporting and required audit/retention work, remove completed-project mappings to reduce correlations from repeated substitutes. **Detailed history may still contain the deleted originals.** Purge history separately when retention rules allow, or retire and remove the complete closed project vault and its backups. Deletion is logical removal, not certified media erasure. Do not destroy the only mappings needed by outstanding obfuscated work. Editing substitutes retains aliases and is not a substitute for data retirement.
 
@@ -125,7 +125,7 @@ Lookup defaults to a readable column table; `lookup --json` retains machine-read
 
 ## Database audit attribution
 
-Every new event names its database ID and title. Cross-database merges record each source database as read and the destination as modified, along with selected incoming values, conflict decisions and exact before/after mappings. Copy/paste carries source database provenance. Changing the account password lists every authorized database whose unlock-key protection was updated. Older imported history retains its original attribution and may lack fields introduced in this version.
+Every new event names its database ID and title. Cross-database merges record each source database as read and the destination as modified, along with selected incoming values, conflict decisions and exact before/after mappings. Copy/paste carries source database provenance. Changing the account password lists every authorized database whose unlock-key protection was updated. Imported history retains its original attribution.
 
 
 ## Creator-only local database access

@@ -147,3 +147,12 @@ Lookup defaults to a readable column table; `lookup --json` retains machine-read
 ## Database audit attribution
 
 Every new event names its database ID and title. Cross-database merges record each source database as read and the destination as modified, along with selected incoming values, conflict decisions and exact before/after mappings. Copy/paste carries source database provenance. Changing the account password lists every contained database as re-encrypted. Older imported history retains its original attribution and may lack fields introduced in this version.
+
+
+## Creator-only local database access
+
+Each local database belongs to the analyst who created its local copy and is encrypted using only that analyst’s current account password. A different local user’s password cannot unlock it. Database ownership is checked before opening or saving an account. Changing the creator’s password re-encrypts their local databases; it does not change any exported archive.
+
+An imported exchange becomes a new local database owned by the importing analyst. Its at-rest protection changes to that analyst’s account password after import. The export password is used only to decrypt the exchange; the original creator’s account password is never required or shared. Original creator identity remains in provenance and imported audit history. The CLI databases command lists each local creator.
+
+Before publishing source or binary packages, purge all saved databases and database exchange archives from the release workspace. Account containers also contain mappings and audit history; deleting them removes those records and requires creating a new account at the next launch. This is separate from normal case retirement and should only be done when explicitly authorized. Never commit databases, passwords, exports or investigation work to Git. Deleting files does not guarantee forensic erasure from backups, snapshots or storage media.

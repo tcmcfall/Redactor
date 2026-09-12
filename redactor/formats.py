@@ -180,6 +180,7 @@ def export_file(path: Path, text: str) -> None:
     extension = path.suffix.lower()
     if extension not in OUTPUT_EXTENSIONS:
         raise ValueError("Choose one of the supported export formats.")
+    path.parent.mkdir(parents=True, exist_ok=True)
     if extension in {".txt", ".md", ".tsv"}:
         path.write_text(text, encoding="utf-8")
     elif extension == ".csv":
@@ -233,8 +234,11 @@ def export_file(path: Path, text: str) -> None:
     elif extension == ".pdf":
         # Qt embeds a Unicode-capable system font and paginates the reviewed text.
         from PySide6.QtGui import QPdfWriter, QTextDocument, QFont, QPageSize, QPageLayout
-        from PySide6.QtCore import QMarginsF
-        writer = QPdfWriter(str(path))
+        from PySide6.QtCore import QMarginsF, QBuffer, QIODevice
+        destination = QBuffer()
+        if not destination.open(QIODevice.OpenModeFlag.WriteOnly):
+            raise OSError("R005: Unable to create PDF output buffer.")
+        writer = QPdfWriter(destination)
         writer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
         writer.setPageMargins(QMarginsF(16, 16, 16, 16), QPageLayout.Unit.Millimeter)
         writer.setCreator("Redactor")
@@ -244,6 +248,20 @@ def export_file(path: Path, text: str) -> None:
         doc.setPlainText(text)
         doc.print_(writer)
         del writer
+        payload = bytes(destination.data())
+        if not payload.startswith(b'%PDF-'):
+            raise OSError("R005: PDF rendering failed; the destination was not changed.")
+        import tempfile
+        from .portable import atomic_replace
+        handle, temporary = tempfile.mkstemp(dir=path.parent, prefix='.redactor-pdf-', suffix='.tmp')
+        try:
+            with os.fdopen(handle, 'wb') as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            atomic_replace(temporary, path)
+        finally:
+            if os.path.exists(temporary): os.unlink(temporary)
     elif extension == ".rtf":
         def escape(value):
             out = []

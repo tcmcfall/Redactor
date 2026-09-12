@@ -59,7 +59,7 @@ A supported import with no sensitive matches stays open and editable. Add manual
 
 ## R009 — Exchange file rejected
 
-**Recommended action:** Check the export password and file integrity. Use a new local analyst username. Do not overwrite a live account; export again from the source if necessary.
+**Recommended action:** Check the export password and file integrity. Open the export as another database tab under your existing account; export again from the source if necessary.
 
 ## R010 — Input or selection needs review
 
@@ -192,3 +192,7 @@ The following inventory is generated from application raise statements. Variable
 - **R002**: Duplicate IDs
 - **R999**: Invalid audit
 - **R009**: R009: Cannot import exchange or backup. Check its password, integrity and format.
+
+## Creator ownership mismatch (R001)
+
+A local database cannot be moved into another account by copying its decrypted internal records. Sign in as its creator, export it with a separate password, then import that exchange while signed in as the receiving analyst. The imported local copy belongs to that analyst. Never share the creator’s account password.

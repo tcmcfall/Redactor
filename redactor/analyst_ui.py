@@ -40,7 +40,7 @@ class AnalystActions:
         try:
             if password != repeat: raise ValueError('Passwords do not match.')
             self.vault.export_exchange(output_path(path), password)
-            QMessageBox.information(self, 'Exchange saved', 'Transfer the encrypted file and communicate its password separately. Another analyst can import under a new local username. The active account password is unchanged.')
+            QMessageBox.information(self, 'Exchange saved', 'Transfer the encrypted file and communicate its password separately. Another analyst can open it as a database tab under their own account. Their password protects the imported local copy; your account password is never shared.')
         except Exception as exc: error(self, exc)
 
     def import_database(self):
@@ -84,7 +84,7 @@ class AnalystActions:
         self.candidates=state.get('candidates',[]); self.fill_candidates()
         self.output.setPlainText(state.get('output','')); self.has_output=state.get('has_output',False)
         self.input_path=state.get('input_path'); self.update_actions(); self.refresh_vault(); self.refresh_audit(); self.update_age()
-        self.notice.setText('Active database: '+self.database_tabs.tabText(index)+'. Review this database independently; use copy/paste or Merge to combine values.')
+        self.notice.setText('Active database: '+self.database_tabs.tabText(index)+'. Local creator: '+self.vault.data.get('creator_username',self.account_vault.data['username'])+'. Only this creator’s account password unlocks the local copy. Use copy/paste or Merge to combine values.')
 
     def copy_mappings(self):
         from .app import confirm

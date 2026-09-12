@@ -117,3 +117,24 @@ def test_merge_repeated_conflicts_use_individual_decisions():
     incoming=[{**base,'replacement':'DEF'},{**base,'replacement':'GHI'}]
     result=merge_mappings([base],incoming,{'0:IBM':'incoming','1:IBM':'keep'})
     assert result[0]['replacement']=='DEF' and result[0]['aliases']==['ABC']
+def test_creator_only_password_and_imported_copy_ownership(tmp_path):
+    from redactor.databases import add_database, Database
+    import copy
+    alice = Vault.create(tmp_path, 'Alice', 'Alice creator password')
+    bob = Vault.create(tmp_path, 'Bob', 'Bob creator password')
+    case = add_database(alice, 'Alice investigation')
+    case.data['mappings'], _ = prepare_mappings([Candidate('IBM','Business','XYZ','manual')], [], 'IBM', strict=True)
+    case.commit('mapping_created')
+    with pytest.raises(ValueError): Vault.open(tmp_path, 'Alice', 'Bob creator password')
+    exchange = tmp_path / 'exchange.zip'
+    case.export_exchange(exchange, 'Separate export password')
+    imported = add_database(bob, 'Imported investigation', Vault.read_exchange(exchange, 'Separate export password'))
+    assert imported.data['creator_username'] == 'Bob'
+    assert imported.data['source_creator'] == 'Alice'
+    bob.close()
+    with pytest.raises(ValueError): Vault.open(tmp_path, 'Bob', 'Alice creator password')
+    with pytest.raises(ValueError): Vault.open(tmp_path, 'Bob', 'Separate export password')
+    reopened = Vault.open(tmp_path, 'Bob', 'Bob creator password')
+    assert Database(reopened, imported.database_id).data['mappings'][0]['original'] == 'IBM'
+    reopened.data['databases']['foreign'] = copy.deepcopy(case.data)
+    with pytest.raises(ValueError, match='another creator'): reopened.save()

@@ -7,6 +7,7 @@ from .vault import Vault, now
 
 class Database(Vault):
     def __init__(self, account, database_id):
+        Vault.validate_ownership(account.data)
         self.account, self.database_id = account, database_id
         super().__init__(account.path, account.key, account.salt, copy.deepcopy(account.data['databases'][database_id]))
 
@@ -35,7 +36,8 @@ def add_database(account, name, payload=None):
     name = name.strip()
     if not name or len(name)>100: raise ValueError('R010: Database title must be 1–100 characters.')
     database_id = uuid.uuid4().hex
-    data = {'username':account.data['username'], 'title':name,'created':now(),
+    data = {'username':account.data['username'], 'creator_username':account.data['username'], 'title':name,'created':now(),
+            'source_creator':payload.get('source_database',{}).get('creator_username',payload.get('source_user',payload.get('username'))) if payload else None,
             'password_changed':account.data['password_changed'],'remind':False,
             'mappings':copy.deepcopy(payload['mappings']) if payload else [], 'audit':[],
             'imported_audit':copy.deepcopy(payload.get('audit',[])) if payload else []}

@@ -79,3 +79,7 @@ def test_legacy_format_explicit_error(tmp_path):
 def test_xlsx_long_cell_not_truncated(tmp_path):
     with pytest.raises(ValueError, match="Excel"):
         export_file(tmp_path / "long.xlsx", "a" * 40000)
+def test_pdf_export_creates_nested_destination(tmp_path, qapp):
+    path = tmp_path / 'new' / 'exports' / 'work.pdf'
+    export_file(path, 'Nested PDF destination contains this text.')
+    assert 'Nested PDF destination' in read_file(path).text

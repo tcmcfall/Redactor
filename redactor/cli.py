@@ -100,7 +100,7 @@ def run(args):
         from .databases import Database, add_database
         account.commit('account_unlocked',interface='cli')
         if args.command == 'databases':
-            emit([{'id':'main','title':'Main database'}, *[{'id':key,'title':value['title']} for key,value in account.data.get('databases',{}).items()]]); return
+            emit([{'id':'main','title':'Main database','creator_username':account.data['username']}, *[{'id':key,'title':value['title'],'creator_username':value.get('creator_username',account.data['username'])} for key,value in account.data.get('databases',{}).items()]]); return
         if args.command == 'new-db':
             db=add_database(account,args.title);emit({'id':db.database_id,'title':args.title});db.close();return
         if args.command == 'import-db':
@@ -256,7 +256,7 @@ def execute(vault, args):
 def main(argv=None):
     configure()
     import os
-    os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
+    os.environ.setdefault('QT_QPA_PLATFORM','windows' if sys.platform == 'win32' else 'offscreen')
     from PySide6.QtGui import QGuiApplication
     gui_runtime=QGuiApplication.instance() or QGuiApplication([])
     for stream in (sys.stdout,sys.stderr):

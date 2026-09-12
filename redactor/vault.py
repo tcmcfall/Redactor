@@ -60,7 +60,7 @@ class Vault:
             raise ValueError("This username already has a vault. Sign in instead.")
         salt = os.urandom(16)
         vault = cls(path, derive(password, salt), salt, {
-            "username": username, "password_changed": now(), "remind": True,
+            "username": username, "creator_username": username, "password_changed": now(), "remind": True,
             "mappings": [], "audit": [], "created": now(),
         })
         vault.audit("account_created")
@@ -82,11 +82,20 @@ class Vault:
             data = json.loads(AESGCM(key).decrypt(nonce, base64.b64decode(envelope["data"]), AAD))
             if data["username"].casefold() != username.strip().casefold():
                 raise ValueError("Account mismatch.")
+            cls.validate_ownership(data)
             return cls(path, key, salt, data)
         except (FileNotFoundError, InvalidTag, KeyError, ValueError, json.JSONDecodeError) as error:
             raise ValueError("Unable to unlock. Check the username and password, or restore an intact vault backup.") from error
 
+    @staticmethod
+    def validate_ownership(data):
+        owner = data['username'].casefold()
+        for database in [data, *data.get('databases', {}).values()]:
+            if database.get('creator_username', database.get('username', '')).casefold() != owner or database.get('username', '').casefold() != owner:
+                raise ValueError('R001: This local database belongs to another creator. Use a password-protected export to create your own local copy.')
+
     def save(self) -> None:
+        self.validate_ownership(self.data)
         nonce = os.urandom(12)
         encrypted = AESGCM(self.key).encrypt(nonce, json.dumps(self.data, ensure_ascii=False).encode(), AAD)
         envelope = {"version": 1, "salt": base64.b64encode(self.salt).decode(),
@@ -118,7 +127,7 @@ class Vault:
                    for key in sorted(before.keys() | after.keys()) if before.get(key) != after.get(key)]
         touched = [copy.deepcopy(m) for m in self.data.get("mappings", []) if m.get("id") in details.get("mapping_ids", [])]
         events = self.data.setdefault("audit", [])
-        database = {"id": getattr(self, 'database_id', 'main'), "title": self.data.get('title', 'Main database')}
+        database = {"id": getattr(self, 'database_id', 'main'), "title": self.data.get('title', 'Main database'), "creator_username": self.data.get('creator_username', self.data['username'])}
         event = {"at": now(), "user": self.data["username"], "action": action,
                  "database": database,
                  "affected_databases": details.pop('affected_databases', [{**database, 'access': 'modified' if changes else 'read/operation'}]),
@@ -136,7 +145,7 @@ class Vault:
         self.commit("exchange_export_prepared", mapping_ids=[m["id"] for m in self.data["mappings"]], destination=str(path))
         salt, nonce = os.urandom(16), os.urandom(12)
         payload = {"format": "Redactor exchange", "version": 1, "exported_utc": now(),
-                   "source_database": {"id":getattr(self,'database_id','main'),"title":self.data.get('title','Main database'),"user":self.data['username']},
+                     "source_database": {"id":getattr(self,'database_id','main'),"title":self.data.get('title','Main database'),"user":self.data['username'],"creator_username":self.data.get('creator_username',self.data['username'])},
                    "source_user": self.data["username"], "mappings": self.data["mappings"], "audit": [*self.data.get("imported_audit", []), *self.data["audit"]]}
         encrypted = AESGCM(derive(password, salt)).encrypt(nonce, json.dumps(payload, ensure_ascii=False).encode(), b"Redactor exchange v1")
         envelope = {"version": 1, "salt": base64.b64encode(salt).decode(), "nonce": base64.b64encode(nonce).decode(), "data": base64.b64encode(encrypted).decode()}

@@ -27,7 +27,9 @@ def main():
                "--name", "Redactor", "--distpath", str(args.output), "--workpath", str(args.work),
                "--specpath", str(args.work), "--add-data", str(ROOT / "redactor/resources") + os.pathsep + "redactor/resources",
                "--collect-data", "pypdfium2_raw",
-               "--collect-data", "docx", "--collect-data", "pptx",
+               # Office helpers open paths containing parts/../templates; on
+               # POSIX the intermediate package directories must physically exist.
+               "--collect-all", "docx", "--collect-all", "pptx",
                "--hidden-import", "PIL.TiffImagePlugin", "--hidden-import", "PIL.WebPImagePlugin",
                "--exclude-module", "pytest", "--exclude-module", "tkinter", str(ROOT / "launcher.py")]
     if args.clean:

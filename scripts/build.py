@@ -56,6 +56,11 @@ def main():
             str(Path(sys.executable).parent), str(Path(sys.base_prefix)),
             str(Path(sys.base_prefix) / "DLLs"), str(windows / "System32"), str(windows),
         ])
+    # Recreate executable containers even when a cached PYZ is rebuilt. This
+    # avoids stale embedded code when filesystem timestamp/cache checks miss it.
+    for target in ('Redactor', 'Redactor-cli'):
+        for toc in ('PKG-00.toc', 'EXE-00.toc'):
+            (args.work / target / toc).unlink(missing_ok=True)
     subprocess.run(command, cwd=ROOT, env=build_env, check=True)
     app_dir = args.output / ("Redactor.app" if sys.platform == "darwin" else "Redactor")
     resource_dir = app_dir / "Contents" / "Resources" if sys.platform == "darwin" else app_dir

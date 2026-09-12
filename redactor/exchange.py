@@ -47,6 +47,7 @@ def bundle(payload: bytes, path: Path):
             if result.returncode: raise ValueError('R011: Portable RAR utility failed. Check its platform and license or choose ZIP.')
         else: raise ValueError('R011: Choose .zip, .tar, .rar or .7z (.zip7).')
         # Atomic destination replacement on the same filesystem.
+        path.parent.mkdir(parents=True, exist_ok=True)
         fd, sibling = tempfile.mkstemp(dir=path.parent,prefix='.redactor-bundle-')
         try:
             with os.fdopen(fd,'wb') as stream:

@@ -74,6 +74,7 @@ def test_backup_is_portable(tmp_path):
     source, target = tmp_path / "source", tmp_path / "target"
     source.mkdir(); target.mkdir()
     vault = Vault.create(source, "Alice", PASSWORD)
+    account_path(target, "Alice").parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(vault.path, account_path(target, "Alice"))
     assert Vault.open(target, "Alice", PASSWORD).data == vault.data
 def test_audit_snapshots_do_not_change_after_in_place_edits(tmp_path):

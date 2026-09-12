@@ -16,6 +16,8 @@ def root() -> Path:
 
 def directory(name: str) -> Path:
     path = root() / name
+    if not path.resolve().is_relative_to(root().resolve()):
+        raise ValueError('R008: Application storage must stay inside the portable folder.')
     path.mkdir(parents=True, exist_ok=True)
     if os.name != 'nt':
         path.chmod(0o700)
@@ -30,6 +32,12 @@ def output_path(value) -> Path:
     if not path.is_relative_to(root().resolve()):
         raise ValueError('R008: Choose an output inside the portable Redactor folder. Move the entire folder to move its data.')
     return path
+
+
+def database_export_path(value) -> Path:
+    """The user may deliberately save an encrypted exchange anywhere writable."""
+    path = Path(value).expanduser()
+    return (path if path.is_absolute() else root() / path).resolve()
 
 
 def configure():

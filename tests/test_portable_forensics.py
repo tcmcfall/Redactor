@@ -95,7 +95,7 @@ def test_multiple_databases_encrypted_and_merge_atomic(tmp_path):
     assert second.data['mappings'][0]['replacement']=='XYZ'
     result=merge_mappings(second.data['mappings'],conflicting,{'IBM':'incoming'})
     assert result[0]['replacement']=='DEF' and result[0]['aliases']==['XYZ']
-    raw=account.path.read_bytes();assert b'IBM' not in raw and b'Case A' not in raw
+    raw=account.path.read_bytes();assert b'"original": "IBM"' not in raw and b'Case A' not in raw
     reopened=Vault.open(tmp_path,'Analyst','Very long local password')
     restored=Database(reopened,first.database_id)
     assert restored.data['mappings']==first.data['mappings']
@@ -138,3 +138,49 @@ def test_creator_only_password_and_imported_copy_ownership(tmp_path):
     assert Database(reopened, imported.database_id).data['mappings'][0]['original'] == 'IBM'
     reopened.data['databases']['foreign'] = copy.deepcopy(case.data)
     with pytest.raises(ValueError, match='another creator'): reopened.save()
+def test_database_folders_hash_users_and_keep_separate_encrypted_copies(tmp_path):
+    import base64, json
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from redactor.databases import add_database, Database
+    from redactor.storage import user_hash
+    from redactor.vault import AAD
+    alice = Vault.create(tmp_path, 'Alice', 'Alice creator password')
+    bob = Vault.create(tmp_path, 'Bob', 'Bob creator password')
+    case = add_database(alice, 'Investigation')
+    case.data['mappings'], _ = prepare_mappings([Candidate('Secret','Custom','Hidden','manual')], [], 'Secret', strict=True)
+    case.commit('saved')
+    export = tmp_path / 'handoff.zip'
+    case.export_exchange(export, 'Independent export password')
+    imported = add_database(bob, 'Imported', Vault.read_exchange(export, 'Independent export password'))
+    assert case.path.parents[1] == imported.path.parents[1]
+    assert case.path.parent.name == user_hash('Alice')
+    assert imported.path.parent.name == user_hash('Bob')
+    assert case.path != imported.path and case.path.exists() and imported.path.exists()
+    assert b'Secret' not in case.path.read_bytes() and b'Secret' not in imported.path.read_bytes()
+    envelope = json.loads(alice.path.read_bytes())
+    index = json.loads(AESGCM(alice.key).decrypt(base64.b64decode(envelope['nonce']), base64.b64decode(envelope['data']), AAD))
+    assert case.database_id in index['authorized_databases']
+    assert 'databases' not in index and 'Secret' not in json.dumps(index)
+    bob.change_password('Bob creator password','Changed Bob password')
+    with pytest.raises(ValueError): Vault.open(tmp_path, 'Bob', 'Bob creator password')
+    reopened = Vault.open(tmp_path, 'Bob', 'Changed Bob password')
+    assert Database(reopened, imported.database_id).data['mappings'][0]['original'] == 'Secret'
+
+
+def test_failed_new_database_authorization_preserves_existing_storage(tmp_path, monkeypatch):
+    from redactor.databases import add_database, Database
+    from redactor import storage
+    account = Vault.create(tmp_path, 'Analyst', 'Original user password')
+    first = add_database(account, 'Existing')
+    original_write = storage.write_blob
+    def fail_account(path, data):
+        if path == account.path: raise OSError('Simulated account write failure')
+        return original_write(path, data)
+    monkeypatch.setattr(storage, 'write_blob', fail_account)
+    with pytest.raises(OSError): add_database(account, 'Unpublished')
+    assert set(account.data['databases']) == {first.database_id}
+    assert len(list(tmp_path.rglob('*.vault'))) == 2
+    with pytest.raises(OSError): account.change_password('Original user password','Changed user password')
+    reopened = Vault.open(tmp_path, 'Analyst', 'Original user password')
+    assert Database(reopened, first.database_id).data['title'] == 'Existing'
+    with pytest.raises(ValueError): Vault.open(tmp_path, 'Analyst', 'Changed user password')

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFileDialog, QInputDialog, QLineEdit, QMessageBox, QDialog, QVBoxLayout, QTextEdit
-from .portable import directory, output_path
+from .portable import directory, output_path, database_export_path
 from .vault import Vault
 from .operations import bulk_proposal, save_mappings, audit_text
 from .engine import restore, replace_exact, validate_mappings
@@ -29,18 +29,19 @@ def import_account_dialog(parent, directory_path):
 class AnalystActions:
     def backup(self):
         from .app import error
-        path, selected_format = QFileDialog.getSaveFileName(self, 'Export encrypted analyst database', str(directory('exports') / 'analyst.zip'), 'ZIP (*.zip);;Compressed TAR (*.tar);;7z / zip7 (*.7z);;RAR - portable utility required (*.rar)')
+        path, selected_format = QFileDialog.getSaveFileName(self, 'Choose exported database name and location', str(directory('exports') / 'analyst.zip'), 'ZIP (*.zip);;Compressed TAR (*.tar);;7z / zip7 (*.7z);;RAR - portable utility required (*.rar)')
         if not path: return
         suffix={ 'ZIP':'.zip', 'Compressed':'.tar', '7z':'.7z', 'RAR':'.rar' }[selected_format.split()[0]]
         if Path(path).suffix.lower()!=suffix: path=str(Path(path).with_suffix(suffix))
-        password, ok = QInputDialog.getText(self, 'Export password', 'Separate export passphrase (12+ characters):', QLineEdit.EchoMode.Password)
+        password, ok = QInputDialog.getText(self, 'Required export password', 'Password for this exported copy (12+ characters). This replaces the local database password for the exported copy only:', QLineEdit.EchoMode.Password)
         if not ok: return
         repeat, ok = QInputDialog.getText(self, 'Confirm export password', 'Repeat the export passphrase:', QLineEdit.EchoMode.Password)
         if not ok: return
         try:
             if password != repeat: raise ValueError('Passwords do not match.')
-            self.vault.export_exchange(output_path(path), password)
-            QMessageBox.information(self, 'Exchange saved', 'Transfer the encrypted file and communicate its password separately. Another analyst can open it as a database tab under their own account. Their password protects the imported local copy; your account password is never shared.')
+            destination = database_export_path(path)
+            self.vault.export_exchange(destination, password)
+            QMessageBox.information(self, 'Exchange saved', f'Exported database: {destination}\n\nThis copy requires the export password you supplied. The original local database keeps its current password. Communicate the export password separately. Importing analysts protect their local copies with their own account passwords.')
         except Exception as exc: error(self, exc)
 
     def import_database(self):

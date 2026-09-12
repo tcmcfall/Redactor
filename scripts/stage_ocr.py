@@ -65,6 +65,8 @@ def main():
         source=args.tessdata/name
         if source.exists():shutil.copy2(source,data/name)
     if not (data/'eng.traineddata').exists():raise SystemExit('English tessdata missing')
+    executable = target/'tesseract.exe' if sys.platform=='win32' else target/'bin/tesseract'
+    subprocess.run([str(executable), '--version'], check=True)
     print('Staged native portable OCR:',target)
 
 

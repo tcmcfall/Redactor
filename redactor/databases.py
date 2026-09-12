@@ -1,24 +1,35 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Multiple logical databases encrypted under one authenticated local account."""
 import copy
+import os
+import re
 import uuid
 from .vault import Vault, now
+from .storage import database_path, database_aad, check_capacity, seal, write_blob
 
 
 class Database(Vault):
     def __init__(self, account, database_id):
         Vault.validate_ownership(account.data)
         self.account, self.database_id = account, database_id
-        super().__init__(account.path, account.key, account.salt, copy.deepcopy(account.data['databases'][database_id]))
+        location = database_path(account.storage_root, database_id, account.data['username'])
+        super().__init__(location, account._database_keys[database_id], account.salt, copy.deepcopy(account.data['databases'][database_id]))
 
     def save(self):
         old = copy.deepcopy(self.account.data['databases'][self.database_id])
+        is_new = self.database_id not in self.account._persisted_database_ids
         try:
             self.account.data['databases'][self.database_id] = copy.deepcopy(self.data)
-            self.account.save()
+            Vault.validate_ownership(self.account.data)
+            check_capacity(self.account.data)
+            write_blob(self.path, seal(self.data, self.key, database_aad(self.database_id, self.account.data['username'])))
+            if is_new:
+                # Publish authorization only after the new encrypted database is durable.
+                self.account.save()
             self._saved_mappings = copy.deepcopy(self.data['mappings'])
         except Exception:
             self.account.data['databases'][self.database_id] = old
+            if is_new and self.path.exists(): self.path.unlink()
             raise
 
     def close(self):
@@ -29,19 +40,24 @@ class Database(Vault):
 
     def change_password(self, current, new):
         self.account.change_password(current,new)
-        self.key, self.salt = self.account.key, self.account.salt
+        self.salt = self.account.salt
 
 
 def add_database(account, name, payload=None):
     name = name.strip()
     if not name or len(name)>100: raise ValueError('R010: Database title must be 1–100 characters.')
     database_id = uuid.uuid4().hex
+    if payload:
+        source_id = payload.get('source_database',{}).get('storage_id') or payload.get('source_database',{}).get('id','')
+        if re.fullmatch(r'[0-9a-f]{32}', source_id) and source_id != account.path.parents[1].name and source_id not in account.data.get('databases',{}) and not database_path(account.storage_root, source_id, account.data['username']).exists():
+            database_id = source_id
     data = {'username':account.data['username'], 'creator_username':account.data['username'], 'title':name,'created':now(),
-            'source_creator':payload.get('source_database',{}).get('creator_username',payload.get('source_user',payload.get('username'))) if payload else None,
+            'source_creator':payload.get('source_creator') or payload.get('source_database',{}).get('creator_username',payload.get('source_user',payload.get('username'))) if payload else None,
             'password_changed':account.data['password_changed'],'remind':False,
             'mappings':copy.deepcopy(payload['mappings']) if payload else [], 'audit':[],
             'imported_audit':copy.deepcopy(payload.get('audit',[])) if payload else []}
     account.data.setdefault('databases',{})[database_id] = data
+    account._database_keys[database_id] = os.urandom(32)
     database = Database(account,database_id)
     try:
         database.commit('database_imported' if payload else 'database_created',
@@ -51,6 +67,7 @@ def add_database(account, name, payload=None):
                         mapping_ids=[m['id'] for m in data['mappings']])
     except Exception:
         account.data['databases'].pop(database_id,None)
+        account._database_keys.pop(database_id,None)
         raise
     return database
 

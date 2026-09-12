@@ -196,3 +196,7 @@ The following inventory is generated from application raise statements. Variable
 ## Creator ownership mismatch (R001)
 
 A local database cannot be moved into another account by copying its decrypted internal records. Sign in as its creator, export it with a separate password, then import that exchange while signed in as the receiving analyst. The imported local copy belongs to that analyst. Never share the creator’s account password.
+
+## Missing database folder or authorization key (R001 / R009)
+
+Restore the complete data/databases tree from a verified local backup. Do not move a single internal database.vault into a different user folder: it requires its account’s authorization key and the original database/user identifiers. Use a password-protected export for transferring a standalone database. Export archives can be named and saved to any chosen writable folder; plaintext work products remain subject to portable-folder restrictions.

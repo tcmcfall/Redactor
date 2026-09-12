@@ -29,9 +29,9 @@ On Windows, open **Redactor.exe** in the root folder. **Redactor-cli.exe** is th
 
 On macOS, keep Redactor.app and its sibling data/tools folders together in one writable folder; application data is outside the signed .app bundle but inside the portable folder. On RHEL, run `./Redactor` or `./Redactor-cli` from the extracted folder. Native builds are platform/architecture specific. A Windows executable cannot run on macOS or RHEL. Linux still requires compatible OS desktop libraries and drivers; a native build is not a replacement for the operating system. macOS and RHEL native validation must be completed on those systems before calling their binaries verified.
 
-The program creates `data/vaults`, `data/logs`, `data/tmp` and `exports` beneath its portable root. Export destinations must remain within that root, including resolved symlink targets. Import can read a local file from another folder without changing it. There is no automatic download, telemetry, update check, remote authentication, or network lookup. Build/dependency acquisition and Git publishing are separate developer operations that use the network. Using a network-mounted folder causes operating-system filesystem traffic: use a local disk or removable drive for a physically offline workflow. The application itself does not initiate network communication. Its license URL is displayed for copying, not automatically opened.
+The program creates `data/databases`, `data/logs`, `data/tmp` and `exports` beneath its portable root. Work-product and plaintext audit exports stay within that root, including resolved symlink targets. Password-protected database exchanges may be saved to any filename and writable location you choose, including a removable drive or a folder outside Redactor. Import can read a local file from another folder without changing it. There is no automatic download, telemetry, update check, remote authentication, or network lookup. Build/dependency acquisition and Git publishing are separate developer operations that use the network. Using a network-mounted folder causes operating-system filesystem traffic: use a local disk or removable drive for a physically offline workflow. The application itself does not initiate network communication. Its license URL is displayed for copying, not automatically opened.
 
-Older installed vaults are not discovered through a hidden fallback. Import an old encrypted `.vault` using its old password, or move the closed application's vaults into `data/vaults`. Do not overwrite an existing analyst account. Preserve your only copy until the imported data has been verified.
+Older installed vaults are not discovered through a hidden fallback. Import an old encrypted `.vault` using its old password. Do not move old flat vault files directly into the new storage tree. Do not overwrite an existing analyst account. Preserve your only copy until the imported data has been verified.
 
 ## Import and review
 
@@ -63,13 +63,13 @@ Click any vault header for ascending/descending sorting. Right-click a header fo
 
 ## Analyst database exchange and hash verification
 
-Use **Account & security → Export password-protected database**. Choose ZIP, compressed TAR, 7z (also called zip7), or RAR. Enter and repeat a separate export passphrase of at least 12 characters. This passphrase does not change your account password. Exchange contents include current mappings, aliases and detailed audit history, encrypted with AES-GCM and a fresh scrypt-derived key, salt and nonce.
+Use **Account & security → Export password-protected database**. Choose the exported database name and destination folder, then ZIP, compressed TAR, 7z (also called zip7), or RAR. Enter and repeat a required export passphrase of at least 12 characters. This password replaces the local database password for the exported copy only. The original local database keeps its current account password. The destination may be outside the portable folder. Exchange contents include current mappings, aliases and detailed audit history, encrypted with AES-GCM and a fresh scrypt-derived key, salt and nonce.
 
 Every archive contains exactly three members: `database.redactor` (encrypted), `SHA256SUMS`, and `SHA512SUMS`. The checksum files use conventional hex-digest/two-space/filename lines. SHA-256 and SHA-512 are standardized SHA-2 algorithms; this does not assert FIPS certification of the application or runtime. TAR uses gzip compression and is automatically recognized on import. 7z uses the bundled Python archive implementation. RAR creation requires a compatible licensed `tools/rar/rar.exe` (Windows) or `tools/rar/rar` (macOS/RHEL); the proprietary encoder is not supplied. An unavailable RAR choice explains this and recommends a built-in format. Archives are compressed after encrypting, so size reduction will be small.
 
 Import verifies both hashes before decrypting. It rejects extra members, path traversal, oversized contents and corrupted hashes. Checksums detect corruption; they are not signatures and do not prove who supplied the file. AES-GCM validates the encrypted content using the password. Communicate that password through a separate channel.
 
-While signed in, choose **Open exported database**. Supply the export password and a title. The current user owns access to the new database tab; no new analyst account is created. Every database is stored inside the same encrypted account container and protected at rest by the current local account password. Changing that password re-encrypts all of its databases. Original exporter identity is retained in imported history; new activity identifies the current user. Close the application to lock all databases.
+While signed in, choose **Open exported database**. Supply the export password and a title. The current user owns access to the new database tab; no new analyst account is created. Each database has its own encrypted file in a database-specific folder with a hashed user subfolder. Its authorization key is protected by the active user’s account password. Changing that password atomically updates the protection of all authorized database keys. Original exporter identity is retained in imported history; new activity identifies the current user. Close the application to lock all databases.
 
 Switch tabs to review independent workspaces. **Copy rows** / **Paste rows** (Ctrl+C/Ctrl+V in the vault table) transfer selected mappings with a sensitive-clipboard confirmation. Input fields support normal text copy/paste. Pasted mappings are validated and previewed before saving.
 
@@ -146,13 +146,31 @@ Lookup defaults to a readable column table; `lookup --json` retains machine-read
 
 ## Database audit attribution
 
-Every new event names its database ID and title. Cross-database merges record each source database as read and the destination as modified, along with selected incoming values, conflict decisions and exact before/after mappings. Copy/paste carries source database provenance. Changing the account password lists every contained database as re-encrypted. Older imported history retains its original attribution and may lack fields introduced in this version.
+Every new event names its database ID and title. Cross-database merges record each source database as read and the destination as modified, along with selected incoming values, conflict decisions and exact before/after mappings. Copy/paste carries source database provenance. Changing the account password lists every authorized database whose unlock-key protection was updated. Older imported history retains its original attribution and may lack fields introduced in this version.
 
 
 ## Creator-only local database access
 
-Each local database belongs to the analyst who created its local copy and is encrypted using only that analyst’s current account password. A different local user’s password cannot unlock it. Database ownership is checked before opening or saving an account. Changing the creator’s password re-encrypts their local databases; it does not change any exported archive.
+Each local database belongs to the analyst who created its local copy and is encrypted using only that analyst’s current account password. A different local user’s password cannot unlock it. Database ownership is checked before opening or saving an account. Changing the creator’s password updates protection of their local database keys; it does not change any exported archive.
 
 An imported exchange becomes a new local database owned by the importing analyst. Its at-rest protection changes to that analyst’s account password after import. The export password is used only to decrypt the exchange; the original creator’s account password is never required or shared. Original creator identity remains in provenance and imported audit history. The CLI databases command lists each local creator.
 
 Before publishing source or binary packages, purge all saved databases and database exchange archives from the release workspace. Account containers also contain mappings and audit history; deleting them removes those records and requires creating a new account at the next launch. This is separate from normal case retirement and should only be done when explicitly authorized. Never commit databases, passwords, exports or investigation work to Git. Deleting files does not guarantee forensic erasure from backups, snapshots or storage media.
+
+
+## Database-specific folders and hashed user folders
+
+Local storage uses this layout; database identifiers and user hashes are opaque hexadecimal values, not database titles or usernames:
+
+```text
+data/databases/
+  <database-id>/
+    <sha256-user-hash>/
+      database.vault
+```
+
+The hash is SHA-256 of the normalized, case-insensitive local username. A hash avoids plaintext names in folder paths; it is not a guarantee that a guessable username cannot be inferred. Different analysts can have separately encrypted copies under the same database identifier, each in their own user-hash folder. Importing the same database again into one account creates a separate copy instead of overwriting its existing tab.
+
+Each imported database uses a fresh random encryption key. The active user’s main database holds the encrypted authorization keys for that user’s database list. Their account password protects those keys; the export password is not stored or reused as the local database password. Changing the account password updates that protection atomically.
+
+Move the entire portable folder, or preserve the complete data/databases tree for local recovery. Do not rename, move or transfer individual internal database.vault files: the main database contains authorization keys needed to open the other files. Use Export password-protected database to create a standalone handoff copy, with your chosen password, name and destination. After import, that copy belongs to the active user and is protected through that user’s account password.

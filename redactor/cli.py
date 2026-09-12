@@ -8,7 +8,7 @@ import sys
 from dataclasses import asdict
 from getpass import getpass
 from pathlib import Path
-from .portable import configure, directory, output_path
+from .portable import configure, directory, output_path, database_export_path
 from .vault import Vault, vault_directory
 from .engine import Candidate, detect, find_similar_values, prepare_mappings, replace_candidates, restore, replace_exact, KINDS
 from .formats import read_file, export_file, NOTICE
@@ -32,7 +32,7 @@ def parser():
     remind = sub.add_parser('reminder'); remind.add_argument('state', choices=['on', 'off'])
     help_ = sub.add_parser('help-doc'); help_.add_argument('document', choices=['user', 'errors', 'cli', 'license'])
     imp = sub.add_parser('import-db', help='Open exchange/legacy backup as another database under the active account'); imp.add_argument('input'); imp.add_argument('--title')
-    exp = sub.add_parser('export-db', help='Export encrypted database using a separate password'); exp.add_argument('output')
+    exp = sub.add_parser('export-db', help='Export to your chosen filename/location using a required export password'); exp.add_argument('output', help='Archive filename; absolute paths may be outside the portable folder')
     imp = sub.add_parser('import', help='Extract editable text, even with zero detections'); imp.add_argument('input'); imp.add_argument('output')
     scan = sub.add_parser('scan', help='Save a sensitive review plan; no automatic near-match corrections'); scan.add_argument('input'); scan.add_argument('plan')
     review = sub.add_parser('review', help='Edit candidate inclusion, custom replacement or manual value in plan')
@@ -158,7 +158,10 @@ def execute(vault, args):
     if command == 'reminder':
         vault.data['remind'] = args.state == 'on'; vault.commit('reminder_preference_changed', enabled=vault.data['remind']); return
     if command == 'export-db':
-        vault.export_exchange(output_path(args.output), new_password('Separate export password: ')); return
+        destination = database_export_path(args.output)
+        vault.export_exchange(destination, new_password('Required password for exported copy: '))
+        emit({'exported_database':str(destination),'protection':'Export password; original local database password unchanged'})
+        return
     if command == 'lookup':
         rows = [m for m in selected(vault,args) if args.query.casefold() in json.dumps(m,ensure_ascii=False).casefold()]
         vault.commit('lookup', mapping_ids=[m['id'] for m in rows])

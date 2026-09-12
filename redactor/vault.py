@@ -26,11 +26,12 @@ def now() -> str:
 
 def vault_directory() -> Path:
     from .portable import directory
-    return directory("data/vaults")
+    return directory("data/databases")
 
 
 def account_path(directory: Path, username: str) -> Path:
-    return directory / (hashlib.sha256(username.strip().casefold().encode()).hexdigest() + ".vault")
+    from .storage import database_path, main_id
+    return database_path(directory, main_id(username), username)
 
 
 def derive(password: str, salt: bytes) -> bytes:
@@ -48,6 +49,9 @@ class Vault:
     def __init__(self, path: Path, key: bytes, salt: bytes, data: dict):
         self.path, self.key, self.salt, self.data = path, key, salt, data
         self._saved_mappings = copy.deepcopy(data.get("mappings", []))
+        self.storage_root = path.parents[2]
+        self._database_keys = {}
+        self._persisted_database_ids = set()
 
     @classmethod
     def create(cls, directory: Path, username: str, password: str) -> "Vault":
@@ -61,7 +65,7 @@ class Vault:
         salt = os.urandom(16)
         vault = cls(path, derive(password, salt), salt, {
             "username": username, "creator_username": username, "password_changed": now(), "remind": True,
-            "mappings": [], "audit": [], "created": now(),
+            "mappings": [], "audit": [], "databases": {}, "created": now(),
         })
         vault.audit("account_created")
         vault.save()
@@ -82,9 +86,28 @@ class Vault:
             data = json.loads(AESGCM(key).decrypt(nonce, base64.b64decode(envelope["data"]), AAD))
             if data["username"].casefold() != username.strip().casefold():
                 raise ValueError("Account mismatch.")
+            from .storage import database_path, database_aad, read_database, LIMIT
+            authorized = data.pop('authorized_databases', {})
+            if data.get('databases'):
+                raise ValueError('R009: Import a legacy database through a password-protected exchange.')
+            data['databases'] = {}
+            database_keys = {}
+            total_size = path.stat().st_size
+            for database_id, encoded_key in authorized.items():
+                database_key = base64.b64decode(encoded_key, validate=True)
+                if len(database_key) != 32: raise ValueError('R009: Invalid database authorization key.')
+                location = database_path(directory, database_id, data['username'])
+                total_size += location.stat().st_size
+                if total_size > LIMIT: raise ValueError('R005: Authorized database files exceed 100 MB.')
+                data['databases'][database_id] = read_database(location, database_key, database_aad(database_id, data['username']))
+                database_keys[database_id] = database_key
             cls.validate_ownership(data)
-            return cls(path, key, salt, data)
+            vault = cls(path, key, salt, data)
+            vault._database_keys = database_keys
+            vault._persisted_database_ids = set(database_keys)
+            return vault
         except (FileNotFoundError, InvalidTag, KeyError, ValueError, json.JSONDecodeError) as error:
+            if str(error).startswith(('R005:', 'R008:')): raise
             raise ValueError("Unable to unlock. Check the username and password, or restore an intact vault backup.") from error
 
     @staticmethod
@@ -96,25 +119,14 @@ class Vault:
 
     def save(self) -> None:
         self.validate_ownership(self.data)
-        nonce = os.urandom(12)
-        encrypted = AESGCM(self.key).encrypt(nonce, json.dumps(self.data, ensure_ascii=False).encode(), AAD)
-        envelope = {"version": 1, "salt": base64.b64encode(self.salt).decode(),
-                    "nonce": base64.b64encode(nonce).decode(), "data": base64.b64encode(encrypted).decode()}
-        if len(json.dumps(envelope).encode()) > 100_000_000:
-            raise ValueError("R005: Encrypted account exceeds 100 MB. Export and retire completed databases or purge retained audit history before adding more data.")
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        handle, temporary = tempfile.mkstemp(dir=self.path.parent, prefix=".redactor-", suffix=".tmp")
-        try:
-            with os.fdopen(handle, "w", encoding="utf-8") as stream:
-                json.dump(envelope, stream)
-                stream.flush()
-                os.fsync(stream.fileno())
-            from .portable import atomic_replace
-            atomic_replace(temporary, self.path)
-            self._saved_mappings = copy.deepcopy(self.data.get("mappings", []))
-        finally:
-            if os.path.exists(temporary):
-                os.unlink(temporary)
+        from .storage import check_capacity, seal, write_blob
+        check_capacity(self.data)
+        payload = {k:v for k,v in self.data.items() if k != 'databases'}
+        payload['authorized_databases'] = {database_id:base64.b64encode(self._database_keys[database_id]).decode()
+                                           for database_id in self.data.get('databases', {})}
+        write_blob(self.path, seal(payload, self.key, AAD, self.salt))
+        self._persisted_database_ids = set(self.data.get('databases', {}))
+        self._saved_mappings = copy.deepcopy(self.data.get("mappings", []))
 
     def commit(self, action: str, **details) -> None:
         self.audit(action, **details)
@@ -127,7 +139,7 @@ class Vault:
                    for key in sorted(before.keys() | after.keys()) if before.get(key) != after.get(key)]
         touched = [copy.deepcopy(m) for m in self.data.get("mappings", []) if m.get("id") in details.get("mapping_ids", [])]
         events = self.data.setdefault("audit", [])
-        database = {"id": getattr(self, 'database_id', 'main'), "title": self.data.get('title', 'Main database'), "creator_username": self.data.get('creator_username', self.data['username'])}
+        database = {"id": getattr(self, 'database_id', 'main'), "storage_id": self.path.parents[1].name, "title": self.data.get('title', 'Main database'), "creator_username": self.data.get('creator_username', self.data['username'])}
         event = {"at": now(), "user": self.data["username"], "action": action,
                  "database": database,
                  "affected_databases": details.pop('affected_databases', [{**database, 'access': 'modified' if changes else 'read/operation'}]),
@@ -145,7 +157,8 @@ class Vault:
         self.commit("exchange_export_prepared", mapping_ids=[m["id"] for m in self.data["mappings"]], destination=str(path))
         salt, nonce = os.urandom(16), os.urandom(12)
         payload = {"format": "Redactor exchange", "version": 1, "exported_utc": now(),
-                     "source_database": {"id":getattr(self,'database_id','main'),"title":self.data.get('title','Main database'),"user":self.data['username'],"creator_username":self.data.get('creator_username',self.data['username'])},
+                     "source_database": {"id":getattr(self,'database_id','main'),"storage_id":self.path.parents[1].name,"title":self.data.get('title','Main database'),"user":self.data['username'],"creator_username":self.data.get('creator_username',self.data['username'])},
+                   "source_creator": self.data.get('source_creator') or self.data.get('creator_username',self.data['username']),
                    "source_user": self.data["username"], "mappings": self.data["mappings"], "audit": [*self.data.get("imported_audit", []), *self.data["audit"]]}
         encrypted = AESGCM(derive(password, salt)).encrypt(nonce, json.dumps(payload, ensure_ascii=False).encode(), b"Redactor exchange v1")
         envelope = {"version": 1, "salt": base64.b64encode(salt).decode(), "nonce": base64.b64encode(nonce).decode(), "data": base64.b64encode(encrypted).decode()}
@@ -199,7 +212,7 @@ class Vault:
         self.data["password_changed"] = now()
         try:
             self.commit("password_changed", affected_databases=[{'id':'main','title':'Main database','access':'re-encrypted'},
-                        *[{'id':key,'title':value.get('title','Database'),'access':'re-encrypted'} for key,value in self.data.get('databases',{}).items()]])
+                        *[{'id':key,'title':value.get('title','Database'),'access':'unlock-key protection updated'} for key,value in self.data.get('databases',{}).items()]])
         except Exception:
             self.key, self.salt, self.data = old_key, old_salt, old_data
             raise
@@ -211,4 +224,6 @@ class Vault:
     def close(self) -> None:
         self.data.clear()
         self._saved_mappings.clear()
+        self._database_keys.clear()
+        self._persisted_database_ids.clear()
         self.key = b""

@@ -89,7 +89,7 @@ Transfer reviewed mappings using a sensitive JSON file inside the portable folde
 Open editable INPUT, WORK PRODUCT and substitutions panels. Tab switches focus;
 F3 imports, F4 adds manual values, F5 scans, F6 applies, F7 restores, F2 exports, F1 helps, Ctrl-Q exits and locks. Ctrl-T inserts a table column separator.
 .SH FILES
-data/vaults contains encrypted accounts; data/logs/errors.jsonl contains
+data/databases contains encrypted accounts; data/logs/errors.jsonl contains
 sanitized diagnostic categories; data/tmp contains temporary work; exports
 contains explicitly saved outputs. Move the complete folder while closed.
 .SH LIMITATIONS
@@ -113,3 +113,8 @@ https://www.gnu.org/licenses/gpl-3.0.en.html
 
 .SH DATABASE OWNERSHIP
 Only the local creator’s account password unlocks a local database. Importing an exchange creates a copy owned and encrypted by the importing analyst. Export passwords remain separate. The databases command reports the local creator.
+
+.SH DATABASE FILES
+Local databases use data/databases/<database-id>/<sha256-user-hash>/database.vault. Keep the complete tree together. The main database protects the authorization keys for the active user.
+.SH EXPORT PASSWORD AND DESTINATION
+export-db accepts a chosen archive filename and absolute destination outside the application folder. It requires a new password entry and confirmation. That password protects only the exported copy; the original local password is unchanged. Import replaces export-password protection with the active user’s account protection for the local copy.

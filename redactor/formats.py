@@ -8,6 +8,7 @@ import io
 import os
 import shutil
 import subprocess
+import sys
 import textwrap
 import zipfile
 from dataclasses import dataclass
@@ -46,7 +47,9 @@ def ocr_image(image) -> str:
                             capture_output=True, timeout=120, env=env,
                             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     if result.returncode:
-        raise ValueError("Local OCR failed. Check Tesseract and its English language data.")
+        if "--smoke-test" in sys.argv:
+            print("Packaged OCR diagnostic:", result.stderr.decode("utf-8", errors="replace"), flush=True)
+        raise ValueError(f"R004: Local OCR exited with code {result.returncode}. Check the bundled tools/tesseract executable, libraries and English language data. See Help → Error Guide, R004.")
     return result.stdout.decode("utf-8", errors="replace").strip()
 
 

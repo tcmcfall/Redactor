@@ -573,9 +573,10 @@ class MainWindow(AnalystActions, QMainWindow):
         layout.addWidget(button("Change password…", self.change_password))
         layout.addWidget(button("Export password-protected database…", self.backup))
         layout.addWidget(button("Open exported database in a new tab…", self.import_database))
-        layout.addWidget(label("Vault location\n" + str(self.vault.path), "security", True))
+        self.location_label = label("Database location\n" + str(self.vault.path), "security", True)
+        layout.addWidget(self.location_label)
         layout.addWidget(label("Redactor makes no network requests. Files are read locally. Workspaces are not saved automatically. Your session locks after 15 minutes without keyboard or mouse activity. Text copied by Redactor is cleared from the current clipboard after 60 seconds or when locking, if it is still there.", "security", True))
-        layout.addWidget(label("Each local database is protected only by its creator’s account password. Another local user’s password cannot unlock it. Importing an export creates a local copy owned by the importing analyst. Export archives use their separate export password. Changing your account password re-encrypts your local database tabs, but not existing exports. Clipboard history, OS paging, screen capture, malware and other applications are outside Redactor’s protection.", "security", True))
+        layout.addWidget(label("Each local database is protected only by its creator’s account password. Another local user’s password cannot unlock it. Importing an export creates a local copy owned by the importing analyst. Export archives use their separate export password. Changing your account password updates protection of all your local database unlock keys, but not existing exports. Clipboard history, OS paging, screen capture, malware and other applications are outside Redactor’s protection.", "security", True))
         license_text = QLabel('GPL version 3 or later — free software to use, study, modify and redistribute under its terms; no warranty.<br><a style="color: #174a36" href="https://www.gnu.org/licenses/gpl-3.0.en.html">GNU General Public License homepage</a> (copy to your browser; Redactor does not open network links).')
         license_text.setWordWrap(True); license_text.setOpenExternalLinks(False)
         license_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.LinksAccessibleByMouse)
@@ -659,6 +660,7 @@ class MainWindow(AnalystActions, QMainWindow):
         if index == 3: self.update_age()
 
     def update_age(self):
+        self.location_label.setText("Database location\n" + str(self.vault.path))
         self.age_label.setText(f"Signed in as {self.vault.data['username']}\nLast password change: {self.vault.password_age} days ago. Password changes are optional.")
 
     def switch_mode(self, mode):

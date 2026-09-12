@@ -1,0 +1,16 @@
+SYNTHETIC REVIEW EXERCISE
+
+THE REPORT IS READY.
+Annual Review and Quarterly Planning are headings here, not people's names.
+The abbreviation NOTES is a heading in this exercise, not a business.
+The code HTTP refers to a protocol, not an organization.
+
+This is not a valid IPv4 address: 999.999.999.999.
+This number fails the card checksum: 4111 1111 1111 1112.
+A nine-digit order identifier, not an SSN: 000123456.
+
+A sole specialist in a tiny fictional office approved the purchase on a uniquely identifiable date.
+Even without a name, that context could identify someone in a real dataset.
+
+Invented overlooked detail: the confidential plan is called Project Copper Kite.
+Review the entire document, reject false positives, and manually mark details you intend to protect.

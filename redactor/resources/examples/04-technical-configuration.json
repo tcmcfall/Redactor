@@ -1,0 +1,15 @@
+{
+  "training_only": true,
+  "organization": "Moonbeam Systems LLC",
+  "owner": "Alex Morgan",
+  "contact": "alex@example.invalid",
+  "primary_host": "api-prod.training.invalid",
+  "short_host": "db-primary",
+  "bare_hostname_manual_review": "localhost",
+  "ipv4": "192.168.40.18",
+  "ipv6": "2001:db8:abcd:55::72",
+  "loopback_ipv6": "::1",
+  "custom_secret": "DEMO-SECRET-NOT-A-REAL-CREDENTIAL",
+  "custom_project": "Project Glass Comet",
+  "instructions": "All values are synthetic. Mark the custom secret, project name and bare hostname manually."
+}

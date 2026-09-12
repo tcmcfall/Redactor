@@ -1,0 +1,13 @@
+FICTIONAL TRAINING EXERCISE — NO GOVERNMENT INFORMATION
+
+The invented Northstar Records Agency (NRA) is conducting a fictional records review.
+Maya Chen is the review lead. Omar Haddad is the independent reviewer.
+The training system records-gateway.training.invalid used 172.16.5.20 and 2001:db8:12:34::9.
+
+Invented program: Project Amber Atlas
+Invented file number: DEMO-FOIA-2026-0007
+Invented office location: Room 42, Imaginary Annex
+Date for exercise: 2030-04-15
+
+Maya Chen will summarize the timeline and ask Omar Haddad to verify it.
+Do not infer any real agency, investigation, security classification or affiliation from this example.

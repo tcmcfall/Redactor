@@ -1,0 +1,20 @@
+SYNTHETIC PERSONAL RECORD — NOT A REAL CUSTOMER
+
+Name: Elena Brooks
+Email: elena.brooks@example.invalid
+Employer: Silver Acorn Company
+
+Invalid SSN-shaped training identifier: 000-12-3456
+Another invalid SSN-shaped identifier: 900 00 0000
+Nine-digit training identifier: 000123456
+
+Card-check exercise, never usable for payment: 4111 1111 1111 1111
+Second checksum-valid training sequence: 5555-5555-5555-4444
+Deliberately checksum-invalid sequence: 4111 1111 1111 1112
+
+Invented address: 42 Imaginary Lane, Example Town
+Medical-style free text: Patient prefers a quiet room.
+Custom account code: DEMO-ACCOUNT-ORCHID
+
+Elena Brooks requests an accurate summary with all sensitive values restored only in the local final report.
+No real personal record is represented here. All examples are for offline software testing.

@@ -1,0 +1,35 @@
+name: RHEL 10 native build
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rhel:
+    # Use a real RHEL 10 desktop/build runner, not Ubuntu relabeled as RHEL.
+    # Required labels and system packages are documented in BUILDING.md.
+    runs-on: [self-hosted, linux, x64, rhel-10]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native target
+        run: |
+          . /etc/os-release
+          test "$ID" = rhel
+          test "${VERSION_ID%%.*}" -ge 10
+      - name: Install Python dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install '.[dev]'
+      - name: Test
+        run: .venv/bin/python -m pytest -q
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Build and archive
+        run: |
+          .venv/bin/python scripts/stage_ocr.py --executable /usr/bin/tesseract --tessdata /usr/share/tesseract/tessdata
+          .venv/bin/python scripts/build.py
+          QT_QPA_PLATFORM=offscreen ./dist/Redactor/Redactor --smoke-test packaged-check
+          tar -czf dist/Redactor-RHEL10-x64.tar.gz -C dist Redactor
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Redactor-RHEL10-x64
+          path: dist/Redactor-RHEL10-x64.tar.gz

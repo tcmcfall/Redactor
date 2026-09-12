@@ -1,0 +1,18 @@
+SYNTHETIC EDGE-CASE EXERCISE
+
+😀 Jane Smith met Jane Smithson. Jane Smith is a different exact value from Jane Smithson.
+The example uses IBM, IBMx and International Business Machines.
+Repeated value: Jane Smith, Jane Smith, Jane Smith.
+
+Names for manual review: José Álvarez; Zoë D'Arcy; 李明; Ольга Иванова.
+Lowercase spelling for manual review: jane smith.
+Non-English project name for manual review: 東京の研究.
+
+Punctuation exercise: host-alpha.training.invalid, 10.20.30.40.
+IPv6 exercise: ::1, 2001:db8:4:5::6.
+
+Exact multiline-sensitive selection exercise:
+Project Silver
+Maple
+
+Manual selection should include exactly the intended characters. Unicode and punctuation must return unchanged after a text round trip.

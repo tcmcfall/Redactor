@@ -1,0 +1,112 @@
+.TH REDACTOR 1 "September 2026" "Redactor 0.2" "User Commands"
+.SH NAME
+redactor \- portable offline sensitive-data substitution and exact restoration
+.SH SYNOPSIS
+.B Redactor-cli
+.RB [ --user " NAME" ]
+.I COMMAND
+.RI [ OPTIONS ]
+.SH DESCRIPTION
+Redactor performs no network or internet communication. Vaults, diagnostics,
+temporary files and exports live inside the movable application folder.
+Passwords are prompted without echo; never put passwords on the command line.
+Close the graphical application before using the CLI.
+.SH COMMANDS
+.TP
+.B create, info, password
+Create an analyst account, inspect its password age, or change its password.
+.TP
+.B reminder on|off
+Set the optional 60-day password reminder.
+.TP
+.B import INPUT OUTPUT
+Extract editable text. No sensitive matches is not an error.
+.TP
+.B scan INPUT PLAN
+Write a sensitive JSON review plan containing candidates and near matches.
+.TP
+.B review PLAN
+Use --original or --kind to select values; --state sensitive|insensitive,
+--replacement TEXT, --starts OFFSETS or --add to edit the plan.
+.TP
+.B near PLAN IMPORTED ORIGINAL confirm|edit|deny
+Explicitly resolve a near match. Edit requires --value TEXT.
+.TP
+.B redact PLAN OUTPUT --reviewed
+Apply the reviewed plan and save reversible mappings before export.
+.TP
+.B restore INPUT OUTPUT --reviewed
+Restore exact replacements. Optional --ids and --kind select a subset.
+.TP
+.B obfuscate INPUT OUTPUT --reviewed
+Apply saved mappings, optionally selected by --ids or --kind.
+.TP
+.B lookup
+Filter with --query or --kind; sort with --sort and --descending.
+.TP
+.B batch-update --find TEXT --replace TEXT
+Preview changes to --field original|replacement|kind. Select --ids or --kind.
+Add --apply only after reviewing the preview. Related domains and IP prefixes
+must remain consistent; current replacements must match original lengths.
+.TP
+.B delete --ids ID... --confirm DELETE
+Delete selected mappings and aliases. Alternatively select --kind TYPE.
+.TP
+.B flush --confirm FLUSH
+Delete all mappings. Detailed audit history can still contain originals.
+.TP
+.B audit [--output FILE]
+Read sensitive audit JSON. Output must be inside the portable folder.
+.TP
+.B purge-history --confirm PURGE
+Remove active and imported audit history; retain a history-purged event.
+.TP
+.B export-db OUTPUT
+Prompt for a separate export password. ZIP, compressed TAR, 7z/zip7 or RAR
+contains an encrypted database plus SHA256SUMS and SHA512SUMS. RAR requires
+a licensed native utility in tools/rar.
+.TP
+.B import-db INPUT
+Verify hashes and open as a new database under the authenticated local user.
+Raw legacy .vault backups are also supported.
+.TP
+.B help-doc user|errors|cli|license
+Display bundled offline documentation.
+.TP
+.B databases, new-db TITLE
+List database IDs or create a database under the current user.
+.TP
+.B --database ID
+Global option selecting a database; default main.
+.TP
+.B merge SOURCE_ID... [--ids ID...] [--kind TYPE] [--conflict keep|incoming] [--apply]
+Preview selected/all mappings from multiple databases; apply explicitly.
+.TP
+.B copy-mappings OUTPUT, paste-mappings INPUT [--apply]
+Transfer reviewed mappings using a sensitive JSON file inside the portable folder.
+.TP
+.B workspace [--input FILE]
+Open editable INPUT, WORK PRODUCT and substitutions panels. Tab switches focus;
+F3 imports, F4 adds manual values, F5 scans, F6 applies, F7 restores, F2 exports, F1 helps, Ctrl-Q exits and locks. Ctrl-T inserts a table column separator.
+.SH FILES
+data/vaults contains encrypted accounts; data/logs/errors.jsonl contains
+sanitized diagnostic categories; data/tmp contains temporary work; exports
+contains explicitly saved outputs. Move the complete folder while closed.
+.SH LIMITATIONS
+Detection requires human review. Length means Unicode character count,
+not rendered width. Exports reconstruct text, not original document layout.
+IP equality and binary common-prefix lengths and literal domain suffix
+relationships are retained; geolocation, ordering and numeric distances are not.
+Surrogate addresses must never be used as network targets.
+Audit records contain sensitive originals. Checksums are not signatures;
+this application is not an externally certified chain-of-custody system.
+.SH EXIT STATUS
+0 indicates success. 2 indicates an error with a stable R001-R011 or R999
+reference, recommended action and Error Guide section. argparse usage errors
+also return 2.
+.SH SEE ALSO
+Run "Redactor-cli help-doc errors" for recovery instructions and
+"Redactor-cli help-doc cli" for examples. Use "man ./redactor.1" without installation.
+.SH LICENSE
+GNU GPL version 3 or later, without warranty.
+https://www.gnu.org/licenses/gpl-3.0.en.html

@@ -1,0 +1,59 @@
+name: Native desktop builds
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: Redactor-Windows-x64
+          - os: macos-15
+            artifact: Redactor-macOS-arm64
+          - os: macos-15-intel
+            artifact: Redactor-macOS-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install ".[dev]"
+      - run: python -m pytest -q
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Stage native macOS OCR
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          brew install tesseract
+          python scripts/stage_ocr.py --executable "$(brew --prefix tesseract)/bin/tesseract" --tessdata "$(brew --prefix)/share/tessdata"
+      - name: Stage native Windows OCR
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install tesseract --yes --no-progress
+          python scripts/stage_ocr.py --executable 'C:/Program Files/Tesseract-OCR/tesseract.exe' --tessdata 'C:/Program Files/Tesseract-OCR/tessdata'
+      - run: python scripts/build.py
+      - name: Test packaged application
+        shell: bash
+        run: |
+          python -c "import pathlib, subprocess, sys; p = pathlib.Path('dist/Redactor/Redactor.exe') if sys.platform == 'win32' else pathlib.Path('dist/Redactor-portable/Redactor.app/Contents/MacOS/Redactor'); subprocess.run([str(p.resolve()), '--smoke-test', str(pathlib.Path('packaged-check').resolve())], check=True, timeout=120)"
+        env:
+          QT_QPA_PLATFORM: offscreen
+      - name: Archive application on macOS
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Redactor-portable dist/Redactor-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/Redactor/
+            dist/Redactor-macOS.zip
+          if-no-files-found: error

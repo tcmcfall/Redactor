@@ -124,6 +124,8 @@ class Vault:
                  "affected_databases": details.pop('affected_databases', [{**database, 'access': 'modified' if changes else 'read/operation'}]),
                  "changes": changes, "touched": touched, **details,
                  "previous_hash": events[-1].get("hash", "") if events else ""}
+        # History must never share mutable mappings or caller detail objects.
+        event = copy.deepcopy(event)
         event["hash"] = hashlib.sha256(json.dumps(event, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         events.append(event)
 

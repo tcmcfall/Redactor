@@ -76,3 +76,18 @@ def test_backup_is_portable(tmp_path):
     vault = Vault.create(source, "Alice", PASSWORD)
     shutil.copyfile(vault.path, account_path(target, "Alice"))
     assert Vault.open(target, "Alice", PASSWORD).data == vault.data
+def test_audit_snapshots_do_not_change_after_in_place_edits(tmp_path):
+    import copy, hashlib, json
+    vault = Vault.create(tmp_path, 'Audit analyst', 'Synthetic audit passphrase')
+    mapping = {'id':'one', 'original':'IBM', 'replacement':'XYZ', 'kind':'Business'}
+    vault.data['mappings'] = [mapping]
+    details = {'selected':['one']}
+    vault.commit('created_mapping', detail=details)
+    frozen = copy.deepcopy(vault.data['audit'][-1])
+    mapping['replacement'] = 'ABC'
+    details['selected'].clear()
+    vault.commit('edited_mapping')
+    assert vault.data['audit'][-2] == frozen
+    event = copy.deepcopy(frozen)
+    digest = event.pop('hash')
+    assert hashlib.sha256(json.dumps(event, sort_keys=True, ensure_ascii=False).encode()).hexdigest() == digest

@@ -83,3 +83,10 @@ def test_pdf_export_creates_nested_destination(tmp_path, qapp):
     path = tmp_path / 'new' / 'exports' / 'work.pdf'
     export_file(path, 'Nested PDF destination contains this text.')
     assert 'Nested PDF destination' in read_file(path).text
+
+
+def test_pdf_roundtrip_does_not_add_page_numbers(tmp_path, qapp):
+    text = "\n".join(f"Evidence row {number:03d}: IBM XYZ" for number in range(150))
+    path = tmp_path / 'paginated.pdf'
+    export_file(path, text)
+    assert read_file(path).text.splitlines() == text.splitlines()

@@ -56,7 +56,7 @@ def preserve_macos_sources(originals, target):
             for member in package.getmembers():
                 relative=Path(member.name)
                 if not member.isfile() or member.size>10_000_000 or relative.is_absolute() or '..' in relative.parts:continue
-                if not relative.name.lower().startswith(('license','copying','copyright','notice')):continue
+                if not any(term in relative.name.lower() for term in ('license','copying','copyright','notice')):continue
                 destination=notices/name/relative
                 destination.parent.mkdir(parents=True,exist_ok=True)
                 with package.extractfile(member) as source,destination.open('wb') as output:shutil.copyfileobj(source,output)

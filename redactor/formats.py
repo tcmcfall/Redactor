@@ -237,7 +237,7 @@ def export_file(path: Path, text: str) -> None:
     elif extension == ".pdf":
         # Qt embeds a Unicode-capable system font and paginates the reviewed text.
         from PySide6.QtGui import QPdfWriter, QTextDocument, QFont, QPageSize, QPageLayout
-        from PySide6.QtCore import QMarginsF, QBuffer, QIODevice
+        from PySide6.QtCore import QMarginsF, QBuffer, QIODevice, QSizeF
         destination = QBuffer()
         if not destination.open(QIODevice.OpenModeFlag.WriteOnly):
             raise OSError("R005: Unable to create PDF output buffer.")
@@ -249,6 +249,9 @@ def export_file(path: Path, text: str) -> None:
         doc = QTextDocument()
         doc.setDefaultFont(QFont("Segoe UI", 11))
         doc.setPlainText(text)
+        # Explicit pagination prevents QTextDocument from injecting page numbers.
+        doc.documentLayout().setPaintDevice(writer)
+        doc.setPageSize(QSizeF(writer.width(), writer.height()))
         doc.print_(writer)
         del writer
         payload = bytes(destination.data())

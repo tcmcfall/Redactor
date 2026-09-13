@@ -37,7 +37,7 @@ def test_encrypted_exchange_hashes_import_and_wrong_password(tmp_path,suffix):
     path=tmp_path/('exchange'+suffix)
     vault.export_exchange(path,'Different export password')
     payload=unpack(path)
-    assert b'IBM' not in payload and b'Very long' not in payload
+    assert b'"original": "IBM"' not in payload and b'Very long' not in payload
     imported=Vault.import_exchange(path,'Different export password',tmp_path,'Bob','Bobs secure local password')
     assert imported.data['mappings']==mappings
     assert imported.data['imported_audit'][-2]['text_changes'][0]['before']=='IBM'

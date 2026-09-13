@@ -100,6 +100,18 @@ def main():
                     target = resource_dir / "licenses" / distribution.metadata["Name"] / Path(str(entry)).name
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(source, target)
+    # Python is not an importlib distribution, so preserve its notice separately.
+    python_notice = resource_dir / 'licenses/Python/LICENSE.txt'
+    python_notice.parent.mkdir(parents=True, exist_ok=True)
+    installed_notice = Path(sys.base_prefix) / 'LICENSE.txt'
+    if installed_notice.is_file():
+        shutil.copy2(installed_notice, python_notice)
+    else:
+        # Build-time source acquisition only; never executed by Redactor.
+        import urllib.request
+        url = f'https://raw.githubusercontent.com/python/cpython/v{platform.python_version()}/LICENSE'
+        with urllib.request.urlopen(url, timeout=60) as response:
+            python_notice.write_bytes(response.read())
     print(f"Built {platform.system()} {platform.machine()} application: {app_dir}")
     print("Portable build; no installation. Native OCR must be bundled in tools/tesseract. RAR requires a separately licensed portable encoder.")
 

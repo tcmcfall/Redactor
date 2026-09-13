@@ -1,4 +1,4 @@
-.TH REDACTOR 1 "September 2026" "Redactor 0.2.1" "User Commands"
+.TH REDACTOR 1 "September 2026" "Redactor 0.2.2" "User Commands"
 .SH NAME
 redactor \- portable offline sensitive-data substitution and exact restoration
 .SH SYNOPSIS
@@ -27,18 +27,18 @@ Write a sensitive JSON review plan containing candidates and near matches.
 .TP
 .B review PLAN
 Use --original or --kind to select values; --state sensitive|insensitive,
---replacement TEXT, --starts OFFSETS or --add to edit the plan.
+--replacement TEXT, --set-kind TYPE, --starts OFFSETS or --add to edit the plan.
 .TP
 .B near PLAN IMPORTED ORIGINAL confirm|edit|deny
 Explicitly resolve a near match. Edit requires --value TEXT.
 .TP
-.B redact PLAN OUTPUT --reviewed
+.B redact PLAN OUTPUT
 Apply the reviewed plan and save reversible mappings before export.
 .TP
-.B restore INPUT OUTPUT --reviewed
+.B restore INPUT OUTPUT
 Restore exact replacements. Optional --ids and --kind select a subset.
 .TP
-.B obfuscate INPUT OUTPUT --reviewed
+.B obfuscate INPUT OUTPUT
 Apply saved mappings, optionally selected by --ids or --kind.
 .TP
 .B lookup
@@ -118,3 +118,15 @@ Only the local creator’s account password unlocks a local database. Importing 
 Local databases use data/databases/<database-id>/<sha256-user-hash>/database.vault. Keep the complete tree together. The main database protects the authorization keys for the active user.
 .SH EXPORT PASSWORD AND DESTINATION
 export-db accepts a chosen archive filename and absolute destination outside the application folder. It requires a new password entry and confirmation. That password protects only the exported copy; the original local password is unchanged. Import replaces export-password protection with the active user’s account protection for the local copy.
+
+.SH TABLE CONTROLS
+GUI column headers provide sorting and filtering context menus. Vault cells and
+headers provide row and cell clipboard actions. Double-click selected rows to edit;
+multiple selections open an atomic find/replace preview. Type accepts custom labels.
+Pane borders resize the workspace. The logo remains visible in small windows.
+.SH REPOSITORY SECURITY
+Never upload databases, users, audit records, exports or backups. Standard storage
+paths are ignored by Git, but copied or force-added files are not protected.
+The uploading user is responsible for security issues caused by mishandling data.
+Stored audit history is encrypted with the database under the active account password.
+Explicit JSON audit exports contain plaintext sensitive records.

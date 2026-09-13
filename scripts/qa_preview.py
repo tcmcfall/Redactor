@@ -22,7 +22,6 @@ with tempfile.TemporaryDirectory() as directory:
     window.source.setPlainText("INVESTIGATION NOTES\n\nTavi Quill at Zephyr Quill Company (ZQC) reviewed unusual activity on prod-server.example.com.\n\nThe connection originated from 10.24.8.12. Follow up with Tavi Quill before publishing the report.\n\nCase reference: 123-45-6789\nPayment record: 4111 1111 1111 1111\n\nNext step: compare the event timeline and prepare a concise audit summary.")
     window.candidates = detect(window.source.toPlainText(), [])
     window.fill_candidates()
-    window.reviewed.setChecked(True)
     window.generate()
     window.show()
     def capture():

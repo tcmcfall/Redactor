@@ -33,6 +33,7 @@ def test_source_package_contains_code_guide_samples_and_no_vaults(tmp_path):
         assert f"{root}/redactor/resources/User-Guide.md" in names
         assert f"{root}/redactor/resources/examples/Practice-Workbook.md" in names
         assert f"{root}/scripts/build.py" in names
+        assert f"{root}/redactor/resources/redactor_logo.png" in names
         assert not any(n.endswith(".vault") or "/.venv/" in n or "__pycache__" in n for n in names)
         manifest = json.loads(archive.read(f"{root}/SOURCE-SHA256.json"))
         for name, digest in manifest.items():

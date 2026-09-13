@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QFormLayout, QMessageBox, QDialogButtonBox, QCheckBox,
     QComboBox, QStackedWidget, QFrame, QSplitter, QTextEdit, QTableWidget,
     QTableWidgetItem, QHeaderView, QAbstractItemView, QFileDialog, QInputDialog,
-    QButtonGroup, QProgressBar, QTextBrowser, QTabBar,
+    QButtonGroup, QProgressBar, QTextBrowser, QTabBar, QScrollArea, QMenu, QAbstractButton, QSizePolicy,
 )
 
 from .engine import Candidate, KINDS, detect, suggest, prepare_mappings, replace_exact, restore, validate_mappings, literal_pattern
@@ -26,13 +26,13 @@ from .engine import candidate_occurrences, occurrence_selected, replace_candidat
 from .formats import read_file, export_file, INPUT_EXTENSIONS, OUTPUT_EXTENSIONS, MAX_TEXT, NOTICE, tesseract_path
 from .vault import Vault, vault_directory, derive
 from .portable import directory, output_path, configure, atomic_replace
-from .widgets import Brand, ColumnFilters, document
+from .widgets import Brand, ColumnFilters, TypeDelegate, document
 from .operations import audit_text, bulk_proposal, save_mappings
 from .analyst_ui import AnalystActions, import_account_dialog
 
 STYLE = """
 QWidget { color: #203b37; font-family: 'Segoe UI'; font-size: 13px; }
-QMainWindow, QDialog { background: #f5f6f2; }
+QMainWindow, QDialog, QScrollArea, QWidget#page, QWidget#databaseBar { background: #f5f6f2; }
 QMenuBar, QMenu, QStatusBar { background: #eef2eb; color: #203b37; }
 QMenuBar::item:selected, QMenu::item:selected { background: #d4e3d7; }
 QLabel#brand { font-size: 26px; font-weight: 700; letter-spacing: -1px; }
@@ -54,6 +54,8 @@ QPushButton#nav:checked { background: #d4e3d7; color: #174a36; font-weight: 650;
 QTextEdit, QLineEdit, QComboBox { background: #ffffff; border: 1px solid #ccd7d0; border-radius: 6px; padding: 7px; selection-background-color: #c2dfce; selection-color: #183a2c; }
 QTextEdit:focus, QLineEdit:focus { border-color: #52866b; }
 QTableWidget { background: #ffffff; border: 1px solid #d7dfd6; gridline-color: #edf0eb; selection-background-color: #dcece1; selection-color: #203b37; }
+QHeaderView { background: #eef2eb; }
+QTableCornerButton::section { background: #eef2eb; border: none; }
 QHeaderView::section { background: #eef2eb; padding: 8px; border: none; border-bottom: 1px solid #d7dfd6; text-align: left; font-weight: 600; }
 QTabBar::tab { background: #e9eee7; color: #203b37; padding: 10px 16px; border: 1px solid #b8cec0; }
 QTabBar::tab:selected { background: #d4e3d7; color: #174a36; font-weight: bold; }
@@ -75,9 +77,64 @@ def label(text, name=None, wrap=False):
     return item
 
 
+BUTTON_HELP = {
+    'Import file…': 'Open a local document in Input for scanning and manual editing.',
+    'Scan input  ·  Ctrl+R': 'Find possible sensitive values and propose substitutes without changing Input.',
+    'Mark selection sensitive': 'Add the highlighted Input text to suggested substitutions.',
+    'Mark Selection Sensitive': 'Include selected occurrences, using the chosen scope.',
+    'Mark Selection Insensitive': 'Leave selected occurrences unchanged, using the chosen scope.',
+    'Select all': 'Include all visible suggested occurrences, using the chosen scope.',
+    'Select none': 'Exclude all visible suggested occurrences, using the chosen scope.',
+    'Replace selected values': 'Apply included substitutes and save the mappings and audit in the encrypted database.',
+    'Restore exact replacements': 'Restore saved originals in Input using the active database.',
+    'Copy work product': 'Copy the current output to the clipboard; Redactor clears its current clipboard after 60 seconds.',
+    'Export work product…': 'Save the current output in a supported document format.',
+    'Clear workspace': 'Clear unsaved Input and Work Product without deleting saved mappings.',
+    'Clear filters': 'Show rows hidden by column filters; inclusion states are unchanged.',
+    'Merge…': 'Choose mappings from other database tabs and preview merging them into this database.',
+    'New database': 'Create a separate encrypted database owned by this account.',
+    'Open exported database…': 'Unlock an export and import a local copy owned by this account.',
+    'Flush all mappings…': 'Permanently delete all mappings and aliases after explicit confirmation.',
+    'Obfuscate selected in input': 'Apply only the selected saved mappings to Input.',
+    'Restore selected in input': 'Restore only the selected mappings in Input.',
+    'Export activity as JSON…': 'Export a plaintext audit copy after confirmation; this exposes sensitive records.',
+    'Purge this database history…': 'Permanently remove the active database audit history after confirmation.',
+    'Change password…': 'Change the account password protecting all of your local databases and their audit records.',
+    'Export password-protected database…': 'Choose a filename, location, archive format and required export password.',
+    'Open exported database in a new tab…': 'Import an encrypted export as another database protected by your account.',
+    'Workspace': 'Open the Input, Work Product and suggested substitutions panes.',
+    'Conversion vault': 'Search, filter, edit and manage saved original/replacement pairs.',
+    'Audit activity': 'Review encrypted activity records for the active database.',
+    'Account & security': 'Manage passwords, database exchange and security preferences.',
+    'Lock vault  ·  Ctrl+L': 'Clear the unlocked session and return to sign-in.',
+    'Unlock vault': 'Open your local databases using your username and password.',
+    'Create encrypted vault': 'Create a local account and password-protected database.',
+    'Generate another suggestion': 'Propose another same-length substitute while preserving known relationships.',
+    'Close': 'Close this window.', 'OK': 'Accept the values or action shown in this dialog.',
+    'Cancel': 'Close without applying the pending action.', 'Yes': 'Confirm the action described in this dialog.',
+    'No': 'Decline the action described in this dialog.',
+}
+
+
+class ButtonTooltips(QObject):
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Show and isinstance(obj, QAbstractButton) and not obj.toolTip():
+            text = obj.text().replace('&', '')
+            obj.setToolTip(BUTTON_HELP.get(text, text.rstrip('…') + '.'))
+        return False
+
+
+def install_button_tooltips():
+    app = QApplication.instance()
+    if not hasattr(app, '_redactor_tooltips'):
+        app._redactor_tooltips = ButtonTooltips(app)
+        app.installEventFilter(app._redactor_tooltips)
+
+
 def button(text, callback, primary=False):
     item = QPushButton(text.replace("&", "&&"))
     if primary: item.setObjectName("primary")
+    item.setToolTip(BUTTON_HELP.get(text, text.replace("…", "").replace("&", "") + "."))
     item.clicked.connect(callback)
     return item
 
@@ -128,6 +185,7 @@ class Worker(QRunnable):
 class Login(QDialog):
     def __init__(self, directory):
         super().__init__()
+        install_button_tooltips()
         self.directory, self.vault = directory, None
         self.failed_attempts = 0
         self.setWindowTitle("Redactor — unlock local vault")
@@ -138,7 +196,7 @@ class Login(QDialog):
         layout.addWidget(Brand())
         layout.addWidget(label("Sensitive work. Familiar words. Local control.", "muted"))
         self.create_account = QCheckBox("Create a new local account")
-        self.create_account.setChecked(not any(directory.glob("*.vault")))
+        self.create_account.setChecked(False)
         layout.addWidget(self.create_account)
         form = QFormLayout()
         self.username, self.password, self.repeat = QLineEdit(), QLineEdit(), QLineEdit()
@@ -170,6 +228,7 @@ class Login(QDialog):
         self.repeat.setVisible(create)
         self.repeat_label.setVisible(create)
         self.submit.setText("Create encrypted vault" if create else "Unlock vault")
+        self.submit.setToolTip(BUTTON_HELP[self.submit.text()])
 
     def login(self):
         if self.create_account.isChecked() and self.password.text() != self.repeat.text():
@@ -202,6 +261,7 @@ class MappingDialog(QDialog):
         form = QFormLayout()
         self.original, self.replacement = SensitiveValueEditor(original), QLineEdit(replacement)
         self.kind = QComboBox()
+        self.kind.setEditable(True)
         self.kind.addItems(KINDS)
         self.kind.setCurrentText(kind)
         form.addRow("Sensitive &value", self.original)
@@ -236,7 +296,26 @@ class SensitiveValueEditor(QTextEdit):
         return self.toPlainText()
 
 
-class CandidateTable(QTableWidget):
+class SelectionTable(QTableWidget):
+    """Preserve an existing multi-selection when double-clicking to edit it."""
+    def mousePressEvent(self, event):
+        index = self.indexAt(event.position().toPoint())
+        rows = {i.row() for i in self.selectionModel().selectedRows() if not self.isRowHidden(i.row())}
+        self._edit_rows = rows if index.row() in rows and len(rows)>1 and event.modifiers()==Qt.KeyboardModifier.NoModifier else set()
+        super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        index = self.indexAt(event.position().toPoint())
+        rows = getattr(self, '_edit_rows', set())
+        if index.row() in rows:
+            for row in rows:
+                for column in range(self.columnCount()):
+                    item = self.item(row,column)
+                    if item: item.setSelected(True)
+        super().mouseDoubleClickEvent(event)
+
+
+class CandidateTable(SelectionTable):
     """Keep the highlighted group intact when its Use checkbox is clicked."""
     def mousePressEvent(self, event):
         index = self.indexAt(event.position().toPoint())
@@ -268,6 +347,7 @@ class MainWindow(AnalystActions, QMainWindow):
         self.account_vault = vault
         self.open_databases = [vault]
         self.workspace_states = {}
+        install_button_tooltips()
         self.active_database = 0
         self.vault = vault
         self.candidates = []
@@ -281,21 +361,23 @@ class MainWindow(AnalystActions, QMainWindow):
         self.relock = False
         self.setWindowTitle("Redactor")
         self.resize(1320, 920)
-        self.setMinimumSize(1000, 740)
+        self.setMinimumSize(560, 420)
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.resize(min(1320, screen.width()), min(920, screen.height()))
         root = QWidget()
         horizontal = QHBoxLayout(root)
         horizontal.setContentsMargins(0, 0, 0, 0)
         horizontal.setSpacing(0)
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
-        sidebar.setMinimumWidth(175)
+        sidebar.setMinimumWidth(185)
         sidebar.setMaximumWidth(280)
         nav = QVBoxLayout(sidebar)
-        nav.setContentsMargins(18, 28, 18, 20)
-        nav.setSpacing(10)
+        nav.setContentsMargins(8, 8, 8, 8)
+        nav.setSpacing(4)
         nav.addWidget(Brand())
         nav.addWidget(label("LOCAL DATA WORKSPACE", "eyebrow"))
-        nav.addSpacing(28)
+        nav.addSpacing(4)
         self.pages = QStackedWidget()
         self.nav_group = QButtonGroup(self)
         for index, title in enumerate(["Workspace", "Conversion vault", "Audit activity", "Account & security"]):
@@ -306,7 +388,6 @@ class MainWindow(AnalystActions, QMainWindow):
             nav.addWidget(item)
         self.nav_group.button(0).setChecked(True)
         nav.addStretch()
-        nav.addWidget(label("●  Processing stays local", "eyebrow"))
         nav.addWidget(label(vault.data["username"], "muted", True))
         self.lock_button = button("Lock vault  ·  Ctrl+L", self.lock)
         nav.addWidget(self.lock_button)
@@ -317,12 +398,16 @@ class MainWindow(AnalystActions, QMainWindow):
         horizontal.addWidget(main_split)
         wrapper = QWidget(); wrapper_layout = QVBoxLayout(wrapper)
         tabs_row = QHBoxLayout()
-        self.database_tabs = QTabBar(); self.database_tabs.addTab('Main database'); self.database_tabs.setExpanding(False)
+        self.database_tabs = QTabBar(); self.database_tabs.addTab('Main database'); self.database_tabs.setExpanding(False); self.database_tabs.setDrawBase(False)
         tabs_row.addWidget(self.database_tabs,1)
-        tabs_row.addWidget(button('Merge…', self.merge_databases))
         tabs_row.addWidget(button('New database', self.new_database))
         tabs_row.addWidget(button('Open exported database…', self.import_database))
-        wrapper_layout.addLayout(tabs_row)
+        tabs_row.addWidget(button('Merge…', self.merge_databases))
+        tab_widget = QWidget(); tab_widget.setObjectName("databaseBar"); tab_widget.setLayout(tabs_row)
+        tab_scroll = QScrollArea(); tab_scroll.setWidgetResizable(True); tab_scroll.setWidget(tab_widget)
+        tab_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        tab_scroll.setFixedHeight(72); tab_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        wrapper_layout.addWidget(tab_scroll)
         wrapper_layout.addWidget(root)
         self.setCentralWidget(wrapper)
         self.make_workspace()
@@ -347,13 +432,15 @@ class MainWindow(AnalystActions, QMainWindow):
             QTimer.singleShot(300, lambda: QMessageBox.information(self, "Optional password reminder", f"Your password was changed {vault.password_age} days ago. You may change it in Account & security, or keep using it. This is optional."))
 
     def page(self, title, subtitle):
-        widget = QWidget()
+        widget = QWidget(); widget.setObjectName("page")
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(28, 24, 28, 20)
         layout.setSpacing(14)
         layout.addWidget(label(title, "title"))
         layout.addWidget(label(subtitle, "muted", True))
-        self.pages.addWidget(widget)
+        scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setWidget(widget)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.pages.addWidget(scroll)
         return layout
 
     def make_workspace(self):
@@ -368,7 +455,6 @@ class MainWindow(AnalystActions, QMainWindow):
             modes.addWidget(b)
         self.redact_button.setChecked(True)
         modes.addStretch()
-        modes.addWidget(button("Format support", self.format_help))
         layout.addLayout(modes)
         self.notice = label("Start with text or import a file. Detection suggests candidates; review the whole input before sharing any output.", "notice", True)
         layout.addWidget(self.notice)
@@ -383,6 +469,7 @@ class MainWindow(AnalystActions, QMainWindow):
         toolbar.addWidget(button("Clear workspace", self.clear_workspace))
         layout.addLayout(toolbar)
         vertical = self.workspace_splitter = QSplitter(Qt.Orientation.Vertical)
+        vertical.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Ignored)
         editors = self.editor_splitter = QSplitter(Qt.Orientation.Horizontal)
         for splitter in (vertical, editors):
             splitter.setHandleWidth(10)
@@ -444,18 +531,17 @@ class MainWindow(AnalystActions, QMainWindow):
         self.table.setColumnWidth(4, 150)
         self.table.setColumnWidth(5, 190)
         self.table.setMinimumHeight(115)
-        self.candidate_filters = ColumnFilters(self.table)
+        self.candidate_filters = ColumnFilters(self.table, sorter=self.sort_candidates)
+        self.table.setItemDelegateForColumn(2, TypeDelegate(self.table))
+        self.table.horizontalHeader().sectionClicked.connect(lambda col: self.sort_candidates(col, Qt.SortOrder.AscendingOrder if self.table.horizontalHeader().sortIndicatorOrder() == Qt.SortOrder.DescendingOrder else Qt.SortOrder.DescendingOrder))
         self.selection_scope = QComboBox()
         self.selection_scope.addItems(['Ask each time', 'All same values', 'Just selected occurrences'])
         self.selection_scope.setToolTip('Choose scope once to avoid repeated prompts. Insensitive occurrences remain in exported work.')
         selection_bar = QHBoxLayout()
         selection_bar.addWidget(label('Scope'))
         selection_bar.addWidget(self.selection_scope)
-        self.review_type = QComboBox(); self.review_type.addItems(['All types', *KINDS])
-        self.review_type.currentTextChanged.connect(lambda v: self.candidate_filters.set_values(2, None if v == 'All types' else {v}))
-        selection_bar.addWidget(self.review_type)
+        selection_bar.addStretch()
         selection_bar.addWidget(button('Clear filters', self.candidate_filters.clear))
-        selection_bar.addWidget(button('Expand review', lambda: self.workspace_splitter.setSizes([100, 600])))
         box.addLayout(selection_bar)
         self.table.itemChanged.connect(self.candidate_changed)
         self.table.itemSelectionChanged.connect(self.focus_candidate)
@@ -468,11 +554,9 @@ class MainWindow(AnalystActions, QMainWindow):
         editors.handle(1).setCursor(Qt.CursorShape.SplitHCursor)
         vertical.handle(1).setToolTip("Drag up or down to resize the editors and suggested substitutions.")
         vertical.handle(1).setCursor(Qt.CursorShape.SplitVCursor)
+        vertical.setMinimumHeight(vertical.minimumSizeHint().height())
         vertical.setSizes([330, 220])
         layout.addWidget(vertical, 1)
-        self.reviewed = QCheckBox("I reviewed the full input and selected values, including anything detection missed.")
-        layout.addWidget(self.reviewed)
-        self.reviewed.toggled.connect(self.update_actions)
         footer = QHBoxLayout()
         self.generate_button = button("Replace selected values", self.generate, True)
         self.copy_button = button("Copy work product", self.copy_output)
@@ -495,20 +579,19 @@ class MainWindow(AnalystActions, QMainWindow):
         self.vault_search.textChanged.connect(self.refresh_vault)
         layout.addWidget(self.vault_search)
         filters = QHBoxLayout()
-        self.vault_type = QComboBox(); self.vault_type.addItems(['All types', *KINDS])
-        self.vault_type.currentTextChanged.connect(lambda v: self.vault_filters.set_values(2, None if v == 'All types' else {v}))
-        filters.addWidget(self.vault_type)
-        filters.addWidget(button('Select visible rows', self.select_visible_vault))
+        filters.addWidget(label('Click headers to sort · Right-click for filters and clipboard actions', 'muted'))
+        filters.addStretch()
         filters.addWidget(button('Clear filters', lambda: self.vault_filters.clear()))
-        filters.addWidget(label('Click headers to sort · Right-click to filter', 'muted'))
         layout.addLayout(filters)
-        self.vault_table = QTableWidget(0, 5)
+        self.vault_table = SelectionTable(0, 5)
         self.vault_table.setHorizontalHeaderLabels(["Sensitive value", "Current replacement", "Type", "Older aliases", "Created"])
         self.vault_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.vault_table.setColumnWidth(0, 230)
         self.vault_table.setColumnWidth(1, 250)
         self.vault_table.setSortingEnabled(True)
-        self.vault_filters = ColumnFilters(self.vault_table)
+        self.vault_filters = ColumnFilters(self.vault_table, self.vault_menu_actions)
+        self.vault_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.vault_table.customContextMenuRequested.connect(self.vault_context_menu)
         self.vault_table.verticalHeader().hide()
         self.vault_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.vault_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -529,13 +612,6 @@ class MainWindow(AnalystActions, QMainWindow):
         layout.addLayout(detail)
         self.vault_table.itemSelectionChanged.connect(self.lookup_detail)
         toolbar = QHBoxLayout()
-        toolbar.addWidget(button("Edit selected value…", self.edit_mapping))
-        delete = button("Delete selected…", self.delete_selected)
-        delete.setObjectName("danger")
-        toolbar.addWidget(button('Copy rows', self.copy_mappings))
-        toolbar.addWidget(button('Paste rows', self.paste_mappings))
-        toolbar.addWidget(delete)
-        toolbar.addWidget(button('Batch update…', self.bulk_update))
         toolbar.addStretch()
         flush = button("Flush all mappings…", self.flush)
         flush.setObjectName("danger")
@@ -556,7 +632,11 @@ class MainWindow(AnalystActions, QMainWindow):
         self.audit_table.setColumnWidth(1, 170)
         self.audit_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.audit_table.verticalHeader().hide()
+        self.audit_table.setSortingEnabled(True)
+        self.audit_filters = ColumnFilters(self.audit_table)
         self.audit_table.itemDoubleClicked.connect(self.audit_detail)
+        audit_bar = QHBoxLayout(); audit_bar.addStretch()
+        audit_bar.addWidget(button("Clear filters", self.audit_filters.clear)); layout.addLayout(audit_bar)
         layout.addWidget(self.audit_table, 1)
         layout.addWidget(button("Export activity as JSON…", self.export_audit))
         layout.addWidget(button("Purge this database history…", self.purge_history))
@@ -576,7 +656,8 @@ class MainWindow(AnalystActions, QMainWindow):
         self.location_label = label("Database location\n" + str(self.vault.path), "security", True)
         layout.addWidget(self.location_label)
         layout.addWidget(label("Redactor makes no network requests. Files are read locally. Workspaces are not saved automatically. Your session locks after 15 minutes without keyboard or mouse activity. Text copied by Redactor is cleared from the current clipboard after 60 seconds or when locking, if it is still there.", "security", True))
-        layout.addWidget(label("Each local database is protected only by its creator’s account password. Another local user’s password cannot unlock it. Importing an export creates a local copy owned by the importing analyst. Export archives use their separate export password. Changing your account password updates protection of all your local database unlock keys, but not existing exports. Clipboard history, OS paging, screen capture, malware and other applications are outside Redactor’s protection.", "security", True))
+        layout.addWidget(label("Stored audit history is encrypted inside each database and unlocked through the account password. Each local database is protected only by its creator’s account password. Another local user’s password cannot unlock it. Importing an export creates a local copy owned by the importing analyst. Export archives use their separate export password. Changing your account password updates protection of all your local database unlock keys, but not existing exports. Clipboard history, OS paging, screen capture, malware and other applications are outside Redactor’s protection.", "security", True))
+        layout.addWidget(label("Databases, local user accounts and audit logs must never be uploaded or synced to an online repository. Git ignores these files in the standard app folders. Ignore rules do not protect files moved or force-added elsewhere. The uploading user is responsible for all security issues arising from mishandling sensitive data, including copied records, logs, exports and backups.", "security", True))
         license_text = QLabel('GPL version 3 or later — free software to use, study, modify and redistribute under its terms; no warranty.<br><a style="color: #174a36" href="https://www.gnu.org/licenses/gpl-3.0.en.html">GNU General Public License homepage</a> (copy to your browser; Redactor does not open network links).')
         license_text.setWordWrap(True); license_text.setOpenExternalLinks(False)
         license_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.LinksAccessibleByMouse)
@@ -602,11 +683,11 @@ class MainWindow(AnalystActions, QMainWindow):
         help_menu = self.menuBar().addMenu("&Help")
         guide = help_menu.addAction("User Guide", self.user_guide)
         guide.setShortcut(QKeySequence("F1"))
-        help_menu.addAction("Supported formats & limits", self.format_help)
-        help_menu.addAction("Error Guide & recovery", lambda: document(self, "Error-Guide.md"))
-        help_menu.addAction("Portable, forensic & CLI guide", lambda: document(self, "Portable-Forensics-CLI.md"))
+        help_menu.addAction("Supported formats and limits", self.format_help)
+        help_menu.addAction("Error Guide and recovery", lambda: document(self, "Error-Guide.md"))
+        help_menu.addAction("Portable, Forensic, and CLI Guide", lambda: document(self, "Portable-Forensics-CLI.md"))
         help_menu.addAction("Practice examples", self.practice_examples)
-        help_menu.addAction("License & source code", self.source_information)
+        help_menu.addAction("License and source code", self.source_information)
 
     def practice_examples(self):
         from importlib.resources import files
@@ -636,7 +717,7 @@ class MainWindow(AnalystActions, QMainWindow):
         self.scan()
 
     def source_information(self):
-        QMessageBox.information(self, "License & source code", "Redactor 0.2.1 is free software under GPL version 3 or later, without warranty. You may study, modify and redistribute it under the license terms.\n\nNative packages include source/Redactor-0.2.1-source.zip beside the application (also beside Redactor.app in the macOS portable folder). It contains application code, tests, the User Guide and build scripts. See LICENSE and SOURCE-DISTRIBUTION.md in the package.\n\nFrom a source checkout, run python scripts/package_source.py to create an updated source package. Third-party libraries retain their own licenses and notices.")
+        QMessageBox.information(self, "License and source code", "Redactor 0.2.2 is free software under GPL version 3 or later, without warranty. You may study, modify and redistribute it under the license terms.\n\nNative packages include source/Redactor-0.2.2-source.zip beside the application (also beside Redactor.app in the macOS portable folder). It contains application code, tests, the User Guide and build scripts. See LICENSE and SOURCE-DISTRIBUTION.md in the package.\n\nFrom a source checkout, run python scripts/package_source.py to create an updated source package. Third-party libraries retain their own licenses and notices.")
 
     def user_guide(self):
         from importlib.resources import files
@@ -673,14 +754,13 @@ class MainWindow(AnalystActions, QMainWindow):
         self.scan_button.setVisible(mode == "redact")
         self.mark_button.setVisible(mode == "redact")
         self.generate_button.setText("Restore exact replacements" if mode == "restore" else "Replace selected values")
-        self.reviewed.setText("I understand restored output contains sensitive originals and is for local reporting." if mode == "restore" else "I reviewed the full input and selected values, including anything detection missed.")
+        self.generate_button.setToolTip(BUTTON_HELP[self.generate_button.text()])
         self.notice.setText("Paste or import the completed AI work into INPUT. Only exact, case-sensitive saved replacements will be restored. Review anything the AI reworded." if mode == "restore" else "Scan the input, review suggestions, and mark any missed values before generating work product.")
         self.source.setExtraSelections([])
 
     def invalidate(self):
         self.output.clear()
         self.has_output = False
-        self.reviewed.setChecked(False)
         self.update_actions()
 
     def source_changed(self):
@@ -689,7 +769,7 @@ class MainWindow(AnalystActions, QMainWindow):
         self.fill_candidates()
 
     def update_actions(self):
-        self.generate_button.setEnabled(not self.busy and self.reviewed.isChecked() and bool(self.source.toPlainText().strip()))
+        self.generate_button.setEnabled(not self.busy and bool(self.source.toPlainText().strip()))
         self.copy_button.setEnabled(not self.busy and self.has_output)
         self.export_button.setEnabled(not self.busy and self.has_output)
 
@@ -821,6 +901,7 @@ class MainWindow(AnalystActions, QMainWindow):
         for row, (index, start, end) in enumerate(self.row_occurrences):
             c = self.candidates[index]
             check = QTableWidgetItem()
+            check.setData(Qt.ItemDataRole.UserRole, (index, start, end))
             check.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable)
             check.setCheckState(Qt.CheckState.Checked if occurrence_selected(c, start) else Qt.CheckState.Unchecked)
             self.table.setItem(row, 0, check)
@@ -828,13 +909,24 @@ class MainWindow(AnalystActions, QMainWindow):
             for col, value in enumerate([c.original, c.kind, c.replacement, location, c.reason], 1):
                 item = QTableWidgetItem(value)
                 item.setToolTip(text[max(0, start-50):min(len(text), end+50)] if col == 4 else value)
-                if col != 3: item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                if col not in (2, 3): item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.table.setItem(row, col, item)
         self.table.blockSignals(False)
+        if hasattr(self, "_candidate_sort"): self.sort_candidates(*self._candidate_sort)
         self.candidate_filters.apply()
         self.review_title.setText(f"SUGGESTED SUBSTITUTIONS  ·  {len(self.candidates)} values / {len(self.row_occurrences)} occurrences")
         self.update_selection_actions()
         self.highlight()
+
+    def sort_candidates(self, column, order):
+        self._candidate_sort = (column, order)
+        self.table.blockSignals(True)
+        self.table.sortItems(column, order)
+        self.row_occurrences = [tuple(self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)) for row in range(self.table.rowCount())]
+        self.table.horizontalHeader().setSortIndicatorShown(True)
+        self.table.horizontalHeader().setSortIndicator(column, order)
+        self.table.blockSignals(False)
+        self.candidate_filters.apply()
 
     def candidate_changed(self, item):
         if item.row() >= len(self.row_occurrences): return
@@ -844,13 +936,20 @@ class MainWindow(AnalystActions, QMainWindow):
                 rows = {item.row()}
             self.set_candidate_rows(rows, item.checkState() == Qt.CheckState.Checked)
             return
-        index, _, _ = self.row_occurrences[item.row()]
-        c = self.candidates[index]
-        c.replacement = self.table.item(item.row(), 3).text()
+        if item.column() not in (2, 3): return
+        rows = {i.row() for i in self.table.selectionModel().selectedRows() if not self.table.isRowHidden(i.row())}
+        if item.row() not in rows: rows = {item.row()}
+        indexes = {self.row_occurrences[row][0] for row in rows}
+        field = 'kind' if item.column() == 2 else 'replacement'
+        value = item.text().strip() if field == 'kind' else item.text()
+        if not value:
+            self.fill_candidates(); return
+        for index in indexes: setattr(self.candidates[index], field, value)
         self.table.blockSignals(True)
-        for row, (other, _, _) in enumerate(self.row_occurrences):
-            if other == index: self.table.item(row, 3).setText(c.replacement)
+        for row, (index, _, _) in enumerate(self.row_occurrences):
+            if index in indexes: self.table.item(row, item.column()).setText(value)
         self.table.blockSignals(False)
+        self.candidate_filters.apply()
         self.invalidate()
         self.highlight()
 
@@ -1003,7 +1102,7 @@ class MainWindow(AnalystActions, QMainWindow):
         except Exception as exc: error(self, exc)
 
     def generate(self):
-        if self.busy or not self.reviewed.isChecked(): return
+        if self.busy: return
         text = self.source.toPlainText()
         if len(text) > MAX_TEXT:
             error(self, "Input exceeds one million characters.")
@@ -1128,7 +1227,8 @@ class MainWindow(AnalystActions, QMainWindow):
             self.lookup_original.clear()
             self.lookup_replacement.clear()
 
-    def edit_mapping(self):
+    def edit_mapping(self, *_):
+        if len(self.selected_mapping_ids()) > 1: return self.bulk_update()
         row = self.vault_table.currentRow()
         if row < 0: return
         original_mapping = self.mapping_at(row)
@@ -1191,10 +1291,14 @@ class MainWindow(AnalystActions, QMainWindow):
 
     def refresh_audit(self):
         events = self.audit_events = list(reversed(self.vault.data["audit"])) + list(reversed(self.vault.data.get("imported_audit", [])))
+        self.audit_table.setSortingEnabled(False)
         self.audit_table.setRowCount(len(events))
         for row, event in enumerate(events):
             for col, value in enumerate([event["at"], event.get("user", "Legacy / unknown"), event.get("database", {}).get("title", "Legacy / unknown"), event["action"], json.dumps({k: v for k, v in event.items() if k not in {"at", "action"}})]):
-                self.audit_table.setItem(row, col, QTableWidgetItem(value))
+                item = QTableWidgetItem(value); item.setData(Qt.ItemDataRole.UserRole, event)
+                self.audit_table.setItem(row, col, item)
+        self.audit_table.setSortingEnabled(True)
+        self.audit_filters.apply()
 
     def export_audit(self):
         path, _ = QFileDialog.getSaveFileName(self, "Export activity", str(directory("exports") / "redactor-activity.json"), "JSON (*.json)")
@@ -1278,6 +1382,7 @@ class MainWindow(AnalystActions, QMainWindow):
         self.table.blockSignals(False)
         self.candidate_filters.allowed.clear()
         self.vault_filters.allowed.clear()
+        self.audit_filters.allowed.clear()
         self.row_occurrences = []
         self.candidates.clear()
         self.vault_table.clearContents()

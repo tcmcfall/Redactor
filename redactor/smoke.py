@@ -28,7 +28,6 @@ def run(output_directory):
             window.source.setPlainText(text)
             window.candidates = detect(text, [])
             window.fill_candidates()
-            window.reviewed.setChecked(True)
             window.generate()
             assert window.has_output
             obfuscated = window.output.toPlainText()

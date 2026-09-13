@@ -1,6 +1,6 @@
 [project]
 name = "redactor-local"
-version = "0.2.1"
+version = "0.2.2"
 description = "Local, reversible sensitive-data substitution desktop application"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE", "THIRD-PARTY-NOTICES.md"]
@@ -32,4 +32,4 @@ build-backend = "setuptools.build_meta"
 include = ["redactor*"]
 
 [tool.setuptools.package-data]
-redactor = ["resources/*.md", "resources/*.1", "resources/examples/*.txt", "resources/examples/*.md", "resources/examples/*.json"]
+redactor = ["resources/*.png", "resources/*.md", "resources/*.1", "resources/examples/*.txt", "resources/examples/*.md", "resources/examples/*.json"]

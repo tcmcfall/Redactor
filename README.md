@@ -6,7 +6,7 @@ A local desktop workspace for reviewable sensitive-data substitutions and exact 
 
 [Portable releases and source downloads](https://github.com/tcmcfall/Redactor/releases)
 
-## Portable version 0.2.1
+## Portable version 0.2.2
 
 The current `Redactor.exe` belongs directly in the portable root with `_internal`, `tools` and `data`. All application-owned files stay in that folder. Multiple database tabs share the authenticated local account; copy/paste and merge actions preview conflicts before saving. RAR exchange is offered when a licensed portable RAR encoder is supplied.
 

@@ -190,3 +190,49 @@ def test_failed_new_database_authorization_preserves_existing_storage(tmp_path, 
     reopened = Vault.open(tmp_path, 'Analyst', 'Original user password')
     assert Database(reopened, first.database_id).data['title'] == 'Existing'
     with pytest.raises(ValueError): Vault.open(tmp_path, 'Analyst', 'Changed user password')
+
+
+def test_readable_generated_network_labels_and_valid_suffixes():
+    from redactor.forensics import generate, TLDS, WORDS
+    rows=[]
+    originals=['tavi@quill.gov','neri@quill.gov','server.quill.gov','quill.gov']
+    for original in originals:
+        kind='Email' if '@' in original else 'Hostname'
+        value=generate(original,kind,rows,[' '.join(originals)])
+        assert len(value)==len(original)
+        assert value.rsplit('.',1)[-1] in TLDS
+        assert value.rsplit('.',1)[-1]!='gov'
+        rows.append({'original':original,'replacement':value,'kind':kind})
+    validate_relationships(rows,True)
+    local = rows[0]['replacement'].split('@')[0].lower()
+    boundaries = {0}
+    for end in range(1, len(local)+1):
+        if any(local[start:end] in WORDS for start in boundaries.copy()): boundaries.add(end)
+    assert len(local) in boundaries
+    assert rows[0]['replacement'].split('@')[1]==rows[1]['replacement'].split('@')[1]
+    assert restore(' '.join(m['replacement'] for m in rows),rows)[0]==' '.join(originals)
+
+
+def test_email_local_part_is_not_detected_as_hostname():
+    candidates=detect('neri.mosswick@example.invalid',[])
+    assert not any(c.original=='neri.mosswick' for c in candidates)
+
+
+def test_audit_is_encrypted_in_all_databases_and_password_change(tmp_path):
+    from redactor.databases import add_database, Database
+    password='Synthetic audit password one'
+    account=Vault.create(tmp_path,'Audit owner',password)
+    database=add_database(account,'Second case')
+    for target in [account,database]:
+        audit_text(target,'test_audit','PRIVATE AUDIT ORIGINAL','FICTIONAL AUDIT OUTPUT')
+    for path in tmp_path.rglob('*.vault'):
+        data=path.read_bytes()
+        assert b'PRIVATE AUDIT ORIGINAL' not in data and b'FICTIONAL AUDIT OUTPUT' not in data and b'Audit owner' not in data
+    new_password='Synthetic audit password two'
+    account.change_password(password,new_password)
+    with pytest.raises(ValueError): Vault.open(tmp_path,'Audit owner',password)
+    reopened=Vault.open(tmp_path,'Audit owner',new_password)
+    child=Database(reopened,database.database_id)
+    for target in [reopened,child]:
+        assert any(e.get('input_text')=='PRIVATE AUDIT ORIGINAL' for e in target.data['audit'])
+    child.close(); reopened.close(); database.close(); account.close()

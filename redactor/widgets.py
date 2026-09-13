@@ -1,30 +1,52 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPainter, QColor, QFont
-from PySide6.QtWidgets import QWidget, QMenu, QDialog, QVBoxLayout, QTextBrowser, QPushButton
+from PySide6.QtCore import Qt, QRectF, QSize
+from PySide6.QtGui import QPainter, QColor, QFont, QPixmap
+from PySide6.QtWidgets import QWidget, QMenu, QDialog, QVBoxLayout, QTextBrowser, QPushButton, QStyledItemDelegate, QComboBox, QSizePolicy
 
 
 class Brand(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumHeight(74)
-        self.setAccessibleName('R/ Redactor')
+        from importlib.resources import files
+        self.logo = QPixmap()
+        self.logo.loadFromData(files('redactor').joinpath('resources/redactor_logo.png').read_bytes())
+        self.setMinimumSize(64, 64)
+        self.setMaximumHeight(144)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.setAccessibleName('Redactor logo')
+
+    def sizeHint(self):
+        return QSize(144, 144)
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(QColor(36, 91, 72, 32))
-        painter.setFont(QFont('Segoe UI', 64, QFont.Weight.Bold))
-        painter.drawText(QRectF(15, -15, 160, 100), Qt.AlignmentFlag.AlignCenter, 'R/')
-        painter.setPen(self.palette().color(self.foregroundRole()))
-        painter.setFont(QFont('Segoe UI', 20, QFont.Weight.Bold))
-        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, 'R/ Redactor')
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        size = self.logo.size().scaled(self.size(), Qt.AspectRatioMode.KeepAspectRatio)
+        painter.drawPixmap((self.width()-size.width())//2, (self.height()-size.height())//2,
+                           size.width(), size.height(), self.logo)
+
+
+class TypeDelegate(QStyledItemDelegate):
+    def createEditor(self, parent, option, index):
+        from .engine import KINDS
+        editor = QComboBox(parent); editor.setEditable(True)
+        editor.addItems(list(dict.fromkeys([*KINDS, index.data()])))
+        editor.setToolTip('Choose a type or enter a custom type. Applies to selected values.')
+        return editor
+
+    def setEditorData(self, editor, index):
+        editor.setCurrentText(index.data())
+
+    def setModelData(self, editor, model, index):
+        value = editor.currentText().strip()
+        if value: model.setData(index, value, Qt.ItemDataRole.EditRole)
 
 
 class ColumnFilters:
     """Header right-click menus filter values independently; selection stays explicit."""
-    def __init__(self, table):
+    def __init__(self, table, extra_actions=None, sorter=None):
         self.table, self.allowed = table, {}
+        self.extra_actions, self.sorter = extra_actions, sorter or table.sortItems
         header = table.horizontalHeader()
         header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         header.customContextMenuRequested.connect(self.menu)
@@ -44,6 +66,10 @@ class ColumnFilters:
         col = self.table.horizontalHeader().logicalIndexAt(pos)
         if col < 0: return
         menu = QMenu(self.table)
+        menu.addAction("Sort ascending", lambda: self.sorter(col, Qt.SortOrder.AscendingOrder))
+        menu.addAction("Sort descending", lambda: self.sorter(col, Qt.SortOrder.DescendingOrder))
+        if self.extra_actions: self.extra_actions(menu, col)
+        menu.addSeparator()
         menu.addAction('Clear all filters', self.clear)
         menu.addAction('Show all in this column', lambda: self.set_values(col, None))
         menu.addAction('Hide all in this column', lambda: self.set_values(col, set()))
@@ -81,5 +107,5 @@ def document(parent, filename, title=None):
     viewer.setOpenLinks(False)
     viewer.setMarkdown(files('redactor').joinpath('resources/' + filename).read_text(encoding='utf-8'))
     layout.addWidget(viewer)
-    close = QPushButton('Close'); close.clicked.connect(dialog.accept); layout.addWidget(close)
+    close = QPushButton('Close'); close.setToolTip('Close this guide.'); close.clicked.connect(dialog.accept); layout.addWidget(close)
     dialog.exec()

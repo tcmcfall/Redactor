@@ -24,8 +24,8 @@ def parser():
     sub.add_parser('databases', help='List databases under the current account')
     newdb=sub.add_parser('new-db'); newdb.add_argument('title')
     workspace=sub.add_parser('workspace',help='Editable terminal workspace'); workspace.add_argument('--input')
-    merge=sub.add_parser('merge'); merge.add_argument('sources',nargs='+'); merge.add_argument('--ids',nargs='*'); merge.add_argument('--kind',choices=KINDS); merge.add_argument('--conflict',choices=['reject','keep','incoming'],default='reject'); merge.add_argument('--apply',action='store_true')
-    copy_=sub.add_parser('copy-mappings');copy_.add_argument('output');copy_.add_argument('--ids',nargs='*');copy_.add_argument('--kind',choices=KINDS)
+    merge=sub.add_parser('merge'); merge.add_argument('sources',nargs='+'); merge.add_argument('--ids',nargs='*'); merge.add_argument('--kind'); merge.add_argument('--conflict',choices=['reject','keep','incoming'],default='reject'); merge.add_argument('--apply',action='store_true')
+    copy_=sub.add_parser('copy-mappings');copy_.add_argument('output');copy_.add_argument('--ids',nargs='*');copy_.add_argument('--kind')
     paste=sub.add_parser('paste-mappings');paste.add_argument('input');paste.add_argument('--conflict',choices=['reject','keep','incoming'],default='reject');paste.add_argument('--apply',action='store_true')
     sub.add_parser('info', help='Account, storage and password age')
     sub.add_parser('password', help='Change local account password')
@@ -36,23 +36,24 @@ def parser():
     imp = sub.add_parser('import', help='Extract editable text, even with zero detections'); imp.add_argument('input'); imp.add_argument('output')
     scan = sub.add_parser('scan', help='Save a sensitive review plan; no automatic near-match corrections'); scan.add_argument('input'); scan.add_argument('plan')
     review = sub.add_parser('review', help='Edit candidate inclusion, custom replacement or manual value in plan')
-    review.add_argument('plan'); review.add_argument('--original'); review.add_argument('--kind', choices=KINDS)
+    review.add_argument('plan'); review.add_argument('--original'); review.add_argument('--kind')
+    review.add_argument('--set-kind', help='Set selected candidates to a built-in or custom Type label')
     review.add_argument('--replacement'); review.add_argument('--regenerate',action='store_true'); review.add_argument('--state', choices=['sensitive','insensitive'])
     review.add_argument('--starts', help='Comma-separated zero-based source offsets; omit to affect all occurrences')
     review.add_argument('--add', action='store_true')
     near = sub.add_parser('near', help='Explicitly confirm/edit/deny a possible original match in a plan')
     near.add_argument('plan'); near.add_argument('imported'); near.add_argument('original'); near.add_argument('decision', choices=['confirm','edit','deny']); near.add_argument('--value')
-    redact = sub.add_parser('redact', help='Apply reviewed plan'); redact.add_argument('plan'); redact.add_argument('output'); redact.add_argument('--reviewed', action='store_true', required=True)
-    res = sub.add_parser('restore'); res.add_argument('input'); res.add_argument('output'); res.add_argument('--reviewed', action='store_true', required=True)
-    res.add_argument('--ids', nargs='*'); res.add_argument('--kind', choices=KINDS)
-    lookup = sub.add_parser('lookup'); lookup.add_argument('--query', default=''); lookup.add_argument('--kind', choices=KINDS); lookup.add_argument('--sort', choices=['original','replacement','kind','created'], default='original'); lookup.add_argument('--descending', action='store_true'); lookup.add_argument('--json',action='store_true')
+    redact = sub.add_parser('redact', help='Apply reviewed plan'); redact.add_argument('plan'); redact.add_argument('output'); redact.add_argument('--reviewed', action='store_true', help='Optional compatibility flag; review is not enforced')
+    res = sub.add_parser('restore'); res.add_argument('input'); res.add_argument('output'); res.add_argument('--reviewed', action='store_true', help='Optional compatibility flag; review is not enforced')
+    res.add_argument('--ids', nargs='*'); res.add_argument('--kind')
+    lookup = sub.add_parser('lookup'); lookup.add_argument('--query', default=''); lookup.add_argument('--kind'); lookup.add_argument('--sort', choices=['original','replacement','kind','created'], default='original'); lookup.add_argument('--descending', action='store_true'); lookup.add_argument('--json',action='store_true')
     audit = sub.add_parser('audit'); audit.add_argument('--output')
-    delete = sub.add_parser('delete'); delete.add_argument('--ids', nargs='+'); delete.add_argument('--kind', choices=KINDS); delete.add_argument('--confirm', choices=['DELETE'], required=True)
+    delete = sub.add_parser('delete'); delete.add_argument('--ids', nargs='+'); delete.add_argument('--kind'); delete.add_argument('--confirm', choices=['DELETE'], required=True)
     flush = sub.add_parser('flush'); flush.add_argument('--confirm', choices=['FLUSH'], required=True)
     purge = sub.add_parser('purge-history'); purge.add_argument('--confirm', choices=['PURGE'], required=True)
-    edit = sub.add_parser('batch-update'); edit.add_argument('--ids', nargs='*'); edit.add_argument('--kind', choices=KINDS)
+    edit = sub.add_parser('batch-update'); edit.add_argument('--ids', nargs='*'); edit.add_argument('--kind')
     edit.add_argument('--field', choices=['original','replacement','kind'], default='replacement'); edit.add_argument('--find', required=True); edit.add_argument('--replace', required=True); edit.add_argument('--apply', action='store_true')
-    ob = sub.add_parser('obfuscate', help='Apply selected saved mappings'); ob.add_argument('input'); ob.add_argument('output'); ob.add_argument('--ids', nargs='*'); ob.add_argument('--kind', choices=KINDS); ob.add_argument('--reviewed', action='store_true', required=True)
+    ob = sub.add_parser('obfuscate', help='Apply selected saved mappings'); ob.add_argument('input'); ob.add_argument('output'); ob.add_argument('--ids', nargs='*'); ob.add_argument('--kind'); ob.add_argument('--reviewed', action='store_true', help='Optional compatibility flag; review is not enforced')
     return p
 
 
@@ -204,6 +205,9 @@ def execute(vault, args):
                 for c in plan['candidates']:
                     if args.original and c['original'] != args.original: continue
                     if args.kind and c['kind'] != args.kind: continue
+                    if args.set_kind is not None:
+                        if not args.set_kind.strip() or len(args.set_kind)>80 or any(ch in args.set_kind for ch in '\r\n\t'): raise ValueError('R010: Type must be a nonempty single-line label of up to 80 characters.')
+                        c['kind'] = args.set_kind.strip()
                     if args.replacement is not None: c['replacement'] = args.replacement
                     if args.regenerate:
                         from .engine import suggest

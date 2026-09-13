@@ -221,7 +221,7 @@ def detect(text: str, mappings: list[dict]) -> list[Candidate]:
     add(r"(?<!\d)\d{9}(?!\d)", "Social security number", "Nine-digit identifier; review")
     add(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)", "Credit card", "Card number passes Luhn check", validator=luhn)
     add(r"\b[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "Email", "Email address")
-    add(r"(?<![\w@.-])(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[A-Za-z]{2,63}\b", "Hostname", "Domain or fully qualified hostname")
+    add(r"(?<![\w@.-])(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[A-Za-z]{2,63}\b(?![\w@-])", "Hostname", "Domain or fully qualified hostname")
     add(r"\b[A-Za-z]+(?:-[A-Za-z0-9]+)+\b", "Hostname", "Possible short hostname; review")
     add(r"\b(?:[A-Z][\w&'-]*[ \t]+){1,5}(?:Inc\.?|LLC|Ltd\.?|Corporation|Corp\.?|Company|Industries|Bank|Agency)\b", "Business", "Organization suffix; review")
     add(r"\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b", "Business", "Possible mixed-case organization or product name; review")
@@ -258,7 +258,7 @@ def validate_mappings(mappings: list[dict], source: str = "", changed: set[str] 
         raise ValueError("Each exact original must have one mapping.")
     tokens: dict[str, str] = {}
     for m in mappings:
-        if m["kind"] not in KINDS: raise ValueError("R010: Choose one of the supported sensitive value types.")
+        if not isinstance(m["kind"], str) or not m["kind"].strip() or len(m["kind"]) > 80 or any(c in m["kind"] for c in "\r\n\t"): raise ValueError("R010: Type must be a nonempty single-line label of up to 80 characters.")
         if not m["original"].strip():
             raise ValueError("A sensitive value cannot be empty.")
         for token in [m["replacement"], *m.get("aliases", [])]:
@@ -297,6 +297,9 @@ def prepare_mappings(candidates: list[Candidate], existing: list[dict], source: 
             continue
         if c.original in by_original:
             mapping = by_original[c.original]
+            if mapping["kind"] != c.kind:
+                mapping["kind"] = c.kind
+                changed.add(mapping["id"])
             if mapping["replacement"] != c.replacement:
                 mapping["aliases"] = list(dict.fromkeys([*mapping.get("aliases", []), mapping["replacement"]]))
                 mapping["aliases"] = [a for a in mapping["aliases"] if a != c.replacement]

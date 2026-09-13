@@ -200,3 +200,5 @@ A local database cannot be moved into another account by copying its decrypted i
 ## Missing database folder or authorization key (R001 / R009)
 
 Restore the complete data/databases tree from a verified local backup. Do not move a single internal database.vault into a different user folder: it requires its account’s authorization key and the original database/user identifiers. Use a password-protected export for transferring a standalone database. Export archives can be named and saved to any chosen writable folder; plaintext work products remain subject to portable-folder restrictions.
+
+Column filters can hide selected rows. Clear filters to inspect them. Type labels must be nonempty, single-line text of up to 80 characters. Pasting one column requires one value or exactly one line per selected row. R003 also covers unavailable same-length valid domain suffixes; edit the related group together. No review checkbox is required to generate output.

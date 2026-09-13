@@ -103,7 +103,6 @@ def workspace(vault, input_file=None):
         except Exception as exc:await failure(exc)
     @bindings.add('f6')
     async def redact(event):
-        if not await modal(yes_no_dialog(title='Apply reviewed substitutions?',text='Have you reviewed the full input and table? Unselected text will remain unchanged.')):return
         previous=copy.deepcopy(vault.data)
         try:
             candidates=table_candidates(table.text)

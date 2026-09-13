@@ -16,9 +16,10 @@ def test_cli_review_roundtrip_and_second_database(tmp_path,monkeypatch,capsys):
     plan=json.loads((tmp_path/'review.json').read_text(encoding='utf-8'))
     assert len(plan['candidates'])==1
     run('review','review.json','--original','ZQC','--replacement','XYZ')
-    run('redact','review.json','output.txt','--reviewed')
+    run('review','review.json','--original','ZQC','--set-kind','Case label')
+    run('redact','review.json','output.txt')
     assert (tmp_path/'output.txt').read_text()=='XYZ XYZ'
-    run('restore',str(tmp_path/'output.txt'),'restored.txt','--reviewed')
+    run('restore',str(tmp_path/'output.txt'),'restored.txt')
     assert (tmp_path/'restored.txt').read_text()=='ZQC ZQC'
     run('export-db','analyst.zip')
     info=json.loads(run('import-db',str(tmp_path/'analyst.zip'),'--title','Imported'))

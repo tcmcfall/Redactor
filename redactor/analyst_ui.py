@@ -87,6 +87,69 @@ class AnalystActions:
         self.input_path=state.get('input_path'); self.update_actions(); self.refresh_vault(); self.refresh_audit(); self.update_age()
         self.notice.setText('Active database: '+self.database_tabs.tabText(index)+'. Local creator: '+self.vault.data.get('creator_username',self.account_vault.data['username'])+'. Only this creator’s account password unlocks the local copy. Use copy/paste or Merge to combine values.')
 
+    def vault_menu_actions(self, menu, column):
+        menu.addSeparator()
+        menu.addAction('Copy selected rows', self.copy_mappings)
+        menu.addAction('Paste rows into this database…', self.paste_mappings)
+        menu.addAction('Copy selected column values', lambda: self.copy_cells(column))
+        if column in (0, 1, 2):
+            menu.addAction('Paste into selected column values…', lambda: self.paste_cells(column))
+        menu.addAction('Edit selected values…', self.edit_mapping)
+        menu.addAction('Delete selected rows…', self.delete_selected)
+
+    def vault_context_menu(self, pos):
+        from PySide6.QtWidgets import QMenu
+        item = self.vault_table.itemAt(pos)
+        if item is None: return
+        if not item.isSelected(): self.vault_table.setCurrentItem(item)
+        menu = QMenu(self.vault_table)
+        menu.addAction('Copy this cell', lambda: self.copy_cells(item.column(), [item.row()]))
+        if item.column() in (0, 1, 2):
+            menu.addAction('Paste into this cell…', lambda: self.paste_cells(item.column(), [item.row()]))
+        self.vault_menu_actions(menu, item.column())
+        menu.exec(self.vault_table.viewport().mapToGlobal(pos))
+
+    def copy_cells(self, column, rows=None):
+        from PySide6.QtWidgets import QApplication
+        from .app import confirm
+        if rows is None: rows = sorted({i.row() for i in self.vault_table.selectionModel().selectedRows() if not self.vault_table.isRowHidden(i.row())})
+        if not rows: return
+        if not confirm(self, 'Copy sensitive values?', 'Copy the selected values to the clipboard? Clipboard history and other applications may retain them.'): return
+        text = '\n'.join(self.vault_table.item(row, column).text() for row in rows)
+        self.vault.commit('mapping_cells_copied', mapping_ids=[self.mapping_at(row)['id'] for row in rows], column=column)
+        QApplication.clipboard().setText(text); self.owned_clipboard=text; self.clipboard_timer.start(60000)
+
+    def paste_cells(self, column, rows=None):
+        import copy
+        from PySide6.QtWidgets import QApplication
+        from .app import error, confirm
+        if column not in (0, 1, 2): return
+        if rows is None: rows = sorted({i.row() for i in self.vault_table.selectionModel().selectedRows() if not self.vault_table.isRowHidden(i.row())})
+        if not rows: return
+        try:
+            text = QApplication.clipboard().text()
+            if not text or len(text)>1_000_000: raise ValueError('R010: Clipboard must contain nonempty text within one million characters.')
+            values = text.splitlines()
+            if len(values)==1: values *= len(rows)
+            if len(values)!=len(rows): raise ValueError('R010: Paste one value for all selected rows or one line per selected row.')
+            field = ['original', 'replacement', 'kind'][column]
+            updates = {self.mapping_at(row)['id']: value for row,value in zip(rows,values)}
+            proposed=copy.deepcopy(self.vault.data['mappings'])
+            changes=[]
+            for mapping in proposed:
+                if mapping['id'] not in updates: continue
+                old=mapping[field]; new=updates[mapping['id']]
+                if not new.strip(): raise ValueError('R010: Values cannot be blank.')
+                if field=='replacement' and old!=new:
+                    mapping['aliases']=list(dict.fromkeys([*mapping.get('aliases',[]),old]))
+                    mapping['aliases']=[a for a in mapping['aliases'] if a!=new]
+                mapping[field]=new; changes.append(f'{old} → {new}')
+            validate_mappings(proposed, strict=True)
+            if not confirm(self,'Review pasted changes', '\n'.join(changes)+'\n\nApply these exact changes? Original edits alter restoration targets; replacement edits retain prior aliases.'): return
+            save_mappings(self.vault,proposed,'mapping_cells_pasted',set(updates))
+            self.invalidate(); self.candidates=[]; self.fill_candidates(); self.refresh_vault()
+        except Exception as exc: error(self,exc)
+
     def copy_mappings(self):
         from .app import confirm
         from PySide6.QtWidgets import QApplication
@@ -223,7 +286,7 @@ class AnalystActions:
 
     def audit_detail(self, item):
         from .app import button
-        event = self.audit_events[item.row()]
+        event = item.data(Qt.ItemDataRole.UserRole)
         dialog = QDialog(self); dialog.setWindowTitle('Sensitive audit detail'); dialog.resize(900, 650)
         layout = QVBoxLayout(dialog); viewer = QTextEdit(); viewer.setReadOnly(True)
         viewer.setPlainText(json.dumps(event, indent=2, ensure_ascii=False)); layout.addWidget(viewer)

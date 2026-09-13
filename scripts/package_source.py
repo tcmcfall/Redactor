@@ -10,12 +10,12 @@ import tarfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 TOP_LEVEL = ["pyproject.toml", "LICENSE", "README.md", "BUILDING.md", "SOURCE-DISTRIBUTION.md",
              "THIRD-PARTY-NOTICES.md", "MANIFEST.in", ".gitignore", ".gitattributes", "launcher.py", "cli_launcher.py", "Setup-Redactor.ps1",
              "Start-Redactor.ps1", "Install-OCR.ps1", "start-redactor.sh", "requirements-windows-tested.txt"]
 DIRECTORIES = ["redactor", "tests", "scripts", ".github"]
-EXTENSIONS = {".1",".py", ".md", ".txt", ".yml", ".yaml", ".json", ".toml", ".sh", ".ps1"}
+EXTENSIONS = {".png",".1",".py", ".md", ".txt", ".yml", ".yaml", ".json", ".toml", ".sh", ".ps1"}
 
 
 def collect_sources():

@@ -1,6 +1,6 @@
 include LICENSE README.md BUILDING.md SOURCE-DISTRIBUTION.md THIRD-PARTY-NOTICES.md
 include *.ps1 *.sh requirements-windows-tested.txt launcher.py
-recursive-include redactor/resources *.md
+recursive-include redactor/resources *.md *.png *.1
 recursive-include redactor/resources/examples *.txt *.json
 recursive-include tests *.py
 recursive-include scripts *.py

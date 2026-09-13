@@ -25,11 +25,10 @@ def window(tmp_path, qtbot, qapp, monkeypatch):
 def test_review_generate_lookup_restore_and_stale_preview(window, qtbot):
     source = "Tavi Quill at ZQC uses 10.2.3.4."
     window.source.setPlainText(source)
-    assert not window.generate_button.isEnabled()
+    assert window.generate_button.isEnabled()
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
     assert len(window.candidates) >= 3
-    window.reviewed.setChecked(True)
     window.generate()
     output = window.output.toPlainText()
     assert "Tavi Quill" not in output and "ZQC" not in output
@@ -42,7 +41,6 @@ def test_review_generate_lookup_restore_and_stale_preview(window, qtbot):
     assert window.vault_table.item(0, 0).text() == "ZQC"
     window.switch_mode("restore")
     window.source.setPlainText(output)
-    window.reviewed.setChecked(True)
     window.generate()
     assert window.output.toPlainText() == source
     window.source.insertPlainText("changed")
@@ -54,10 +52,9 @@ def test_candidate_edit_invalidates_review(window, qtbot):
     window.source.setPlainText("ZQC")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
-    window.reviewed.setChecked(True)
     window.generate()
     window.table.item(0, 3).setText("Wonka Industries R1234ABCD")
-    assert not window.has_output and not window.reviewed.isChecked()
+    assert not window.has_output
 
 
 def test_unicode_highlight_uses_qt_positions(window, qtbot):
@@ -75,7 +72,6 @@ def test_no_output_released_if_vault_save_fails(window, qtbot, monkeypatch):
     errors = []
     monkeypatch.setattr(window.vault, "save", fail)
     monkeypatch.setattr("redactor.app.error", lambda parent, message: errors.append(str(message)))
-    window.reviewed.setChecked(True)
     window.generate()
     assert errors and not window.has_output and window.vault.data["mappings"] == []
 
@@ -116,14 +112,13 @@ def test_multirow_shift_ctrl_and_bulk_marking(window, qtbot):
     assert {i.row() for i in window.table.selectionModel().selectedRows()} == {0, 2}
     qtbot.mouseClick(window.mark_rows_sensitive, Qt.MouseButton.LeftButton)
     assert [c.selected for c in window.candidates] == [True, False, True]
-    window.reviewed.setChecked(True)
     window.generate()
     assert "QZRA" in window.output.toPlainText()
     # Toggling a selected row checkbox affects the highlighted group.
     qtbot.mouseClick(window.table.viewport(), Qt.MouseButton.LeftButton,
                      pos=window.table.visualItemRect(window.table.item(0, 0)).center())
     assert all(not c.selected for c in window.candidates)
-    assert not window.has_output and not window.reviewed.isChecked()
+    assert not window.has_output
 
 
 def test_inner_panes_resize_independently(window, qtbot):
@@ -155,7 +150,6 @@ def test_repeated_values_share_replacement_and_saved_mapping(window, qtbot):
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
     assert len(window.candidates) == 1
     replacement = window.candidates[0].replacement
-    window.reviewed.setChecked(True)
     window.generate()
     assert window.output.toPlainText().count(replacement) == 3
     assert restore(window.output.toPlainText(), window.vault.data["mappings"])[0] == text
@@ -177,7 +171,6 @@ def test_selected_occurrence_only_and_cancel(window, qtbot, monkeypatch):
     monkeypatch.setattr(window, "ask_selection_scope", lambda rows, selected: "selected")
     window.mark_selected_rows(False)
     assert [window.table.item(i, 0).checkState() == Qt.CheckState.Checked for i in range(3)] == [True, False, True]
-    window.reviewed.setChecked(True)
     window.generate()
     replacement = window.candidates[0].replacement
     assert window.output.toPlainText() == f"😀 {replacement} / ZQC / {replacement}"
@@ -186,7 +179,7 @@ def test_selected_occurrence_only_and_cancel(window, qtbot, monkeypatch):
     monkeypatch.setattr(window, "ask_selection_scope", lambda rows, selected: None)
     window.table.item(0, 0).setCheckState(Qt.CheckState.Unchecked)
     assert window.table.item(0, 0).checkState() == Qt.CheckState.Checked
-    assert window.output.toPlainText() == previous and window.reviewed.isChecked()
+    assert window.output.toPlainText() == previous
     monkeypatch.setattr(window, "ask_selection_scope", lambda rows, selected: "all")
     window.set_candidate_rows([1], False)
     assert not window.candidates[0].selected
@@ -214,7 +207,6 @@ def test_ignore_saved_replacement_keeps_old_alias_after_saving(window, qtbot):
     window.source.setPlainText("ZQC ZQC")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
-    window.reviewed.setChecked(True)
     window.generate()
     old = window.candidates[0].replacement
     window.source.setPlainText("ZQC / ZQC")
@@ -229,7 +221,6 @@ def test_ignore_saved_replacement_keeps_old_alias_after_saving(window, qtbot):
     assert new != old
     assert window.table.item(0, 3).text() == window.table.item(1, 3).text() == new
     assert window.vault.data["mappings"][0]["replacement"] == old
-    window.reviewed.setChecked(True)
     window.generate()
     assert window.output.toPlainText() == f"{new} / {new}"
     assert restore(f"{old} / {new}", window.vault.data["mappings"])[0] == "ZQC / ZQC"
@@ -317,3 +308,81 @@ def test_lock_clears_all_database_workspace_and_audit_caches(window,qtbot):
     assert not window.account_vault._saved_mappings
     assert window.table.rowCount()==0
     assert not window.candidate_filters.allowed and not window.vault_filters.allowed
+
+
+def test_small_window_brand_login_and_removed_controls(window, qtbot, tmp_path):
+    from PySide6.QtWidgets import QPushButton
+    from redactor.app import Login
+    from redactor.widgets import Brand
+    login = Login(tmp_path); qtbot.addWidget(login)
+    assert not login.create_account.isChecked()
+    assert not login.findChild(Brand).logo.isNull()
+    window.resize(800, 600); qtbot.wait(30)
+    brand = window.findChild(Brand)
+    from PySide6.QtCore import QPoint, QRect
+    assert window.rect().contains(QRect(brand.mapTo(window, QPoint()), brand.size()))
+    assert window.width() <= 800 and window.height() <= 600
+    texts = {b.text() for b in window.findChildren(QPushButton)}
+    assert not texts & {'Format support', 'Expand review', 'Copy rows', 'Paste rows', 'Batch update…', 'Select visible rows', 'Edit selected value…', 'Delete selected…'}
+    assert all(b.toolTip() for b in window.findChildren(QPushButton))
+    assert not hasattr(window, 'reviewed')
+
+
+def test_candidate_sort_and_custom_type_updates_selected_values(window):
+    from redactor.engine import Candidate
+    window.source.setPlainText('ZQC QZRA ZQC')
+    window.candidates = [Candidate('ZQC','Business','ELF','manual'), Candidate('QZRA','Business','MOSS','manual')]
+    window.fill_candidates()
+    window.sort_candidates(1, Qt.SortOrder.AscendingOrder)
+    assert window.table.item(0,1).text() == 'QZRA'
+    window.table.selectAll()
+    window.table.item(0,2).setText('Case label')
+    assert {c.kind for c in window.candidates} == {'Case label'}
+    window.generate()
+    assert window.output.toPlainText() == 'ELF MOSS ELF'
+    assert {m['kind'] for m in window.vault.data['mappings']} == {'Case label'}
+    window.candidate_filters.set_values(1, {'ZQC'})
+    assert window.table.isRowHidden(0)
+
+
+def test_vault_cell_paste_validates_and_retains_aliases(window, monkeypatch, qapp):
+    from redactor.engine import Candidate
+    window.source.setPlainText('ZQC')
+    window.candidates = [Candidate('ZQC','Business','ELF','manual')]
+    window.fill_candidates(); window.generate(); window.show_page(1)
+    monkeypatch.setattr('redactor.app.confirm', lambda *a: True)
+    window.vault_table.selectRow(0)
+    qapp.clipboard().setText('OWL')
+    window.paste_cells(1)
+    assert window.vault.data['mappings'][0]['replacement'] == 'OWL'
+    assert 'ELF' in window.vault.data['mappings'][0]['aliases']
+    window.vault_table.selectRow(0)
+    errors=[]; monkeypatch.setattr('redactor.app.error',lambda p,e: errors.append(str(e)))
+    qapp.clipboard().setText('TOO LONG')
+    window.paste_cells(1)
+    assert errors and window.vault.data['mappings'][0]['replacement']=='OWL'
+
+
+def test_audit_sort_keeps_event_identity(window):
+    window.vault.commit('zebra_event', marker='first')
+    window.vault.commit('amber_event', marker='second')
+    window.refresh_audit()
+    window.audit_table.sortItems(3, Qt.SortOrder.AscendingOrder)
+    window.audit_filters.set_values(3, {'amber_event'})
+    visible=[row for row in range(window.audit_table.rowCount()) if not window.audit_table.isRowHidden(row)]
+    assert len(visible)==1
+    event=window.audit_table.item(visible[0],0).data(Qt.ItemDataRole.UserRole)
+    assert event['action']=='amber_event' and event['marker']=='second'
+
+
+def test_double_click_preserves_batch_selection(window, qtbot, monkeypatch):
+    from redactor.engine import Candidate
+    window.source.setPlainText('ZQC QZRA')
+    window.candidates=[Candidate('ZQC','Business','OWL','manual'),Candidate('QZRA','Business','MOSS','manual')]
+    window.fill_candidates(); window.generate(); window.show_page(1)
+    window.vault_table.selectAll()
+    calls=[]; monkeypatch.setattr(window,'bulk_update',lambda: calls.append(window.selected_mapping_ids()))
+    position=window.vault_table.visualItemRect(window.vault_table.item(0,1)).center()
+    qtbot.mouseClick(window.vault_table.viewport(),Qt.MouseButton.LeftButton,pos=position)
+    qtbot.mouseDClick(window.vault_table.viewport(),Qt.MouseButton.LeftButton,pos=position)
+    assert calls and len(calls[0])==2

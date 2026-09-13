@@ -8,11 +8,13 @@ Open samples from **Help → Practice examples**. The same files are included in
 
 ## Exercise A — Corporate investigation
 
-Load `01-corporate-investigation.txt`. Scan and check that Jane Smith, Alex Morgan, International Business Machines, IBM, GinnieMae, GNMA, hostnames and 10.24.8.12 have suggestions. Nimbus Lantern Corporation should be suggested by the organization-suffix heuristic; review all business rows for accuracy.
+All people and organizations in these exercises are invented training labels.
 
-Manually mark `Project Paper Lantern` and `CASE-DEMO-2048`. Reject any headings incorrectly flagged as names or business abbreviations. Generate output and verify that both occurrences of 10.24.8.12 share a replacement. All occurrences of Jane Smith must share a replacement as well.
+Load `01-corporate-investigation.txt`. Scan and check that Tavi Quill, Orin Bramble, Zephyr Quill Company, ZQC, MossQuill, QZRA, hostnames and 10.24.8.12 have suggestions. Nimbus Lantern Corporation should be suggested by the organization-suffix heuristic; review all business rows for accuracy.
 
-In Conversion vault, search `Jane Smith`, then search her generated replacement. Both searches should locate the same pair. Clear the filter and inspect the remaining mappings.
+Manually mark `Project Paper Lantern` and `CASE-DEMO-2048`. Reject any headings incorrectly flagged as names or business abbreviations. Generate output and verify that both occurrences of 10.24.8.12 share a replacement. All occurrences of Tavi Quill must share a replacement as well.
+
+In Conversion vault, search `Tavi Quill`, then search her generated replacement. Both searches should locate the same pair. Clear the filter and inspect the remaining mappings.
 
 ## Exercise B — Government-style narrative
 
@@ -36,9 +38,9 @@ Redactor reads JSON as literal text. It does not execute it or guarantee schema 
 
 ## Exercise E — Unicode, boundaries and overlaps
 
-Load `05-unicode-and-overlaps.txt`. Mark non-English names, lowercase `jane smith`, the project name and the two-line project text manually where needed. A replacement must be a single line even when the sensitive original spans multiple lines.
+Load `05-unicode-and-overlaps.txt`. Mark non-English names, lowercase `tavi quill`, the project name and the two-line project text manually where needed. A replacement must be a single line even when the sensitive original spans multiple lines.
 
-After generation and restoration, compare the whole text with the source. The leading emoji must not shift the highlighted name. Jane Smith must not replace the start of Jane Smithson. Selecting IBM must not change IBMx. Exact capitalization is preserved through separate mappings. For this exercise, use TXT export to avoid image-font rendering differences.
+After generation and restoration, compare the whole text with the source. The leading emoji must not shift the highlighted name. Tavi Quill must not replace the start of Tavi Quillson. Selecting ZQC must not change ZQCx. Exact capitalization is preserved through separate mappings. For this exercise, use TXT export to avoid image-font rendering differences.
 
 ## Exercise F — False positives and contextual review
 

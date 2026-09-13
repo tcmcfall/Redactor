@@ -23,7 +23,7 @@ def window(tmp_path, qtbot, qapp, monkeypatch):
 
 
 def test_review_generate_lookup_restore_and_stale_preview(window, qtbot):
-    source = "Jane Smith at IBM uses 10.2.3.4."
+    source = "Tavi Quill at ZQC uses 10.2.3.4."
     window.source.setPlainText(source)
     assert not window.generate_button.isEnabled()
     window.scan()
@@ -32,14 +32,14 @@ def test_review_generate_lookup_restore_and_stale_preview(window, qtbot):
     window.reviewed.setChecked(True)
     window.generate()
     output = window.output.toPlainText()
-    assert "Jane Smith" not in output and "IBM" not in output
+    assert "Tavi Quill" not in output and "ZQC" not in output
     assert window.copy_button.isEnabled()
     window.show_page(1)
-    window.vault_search.setText("IBM")
+    window.vault_search.setText("ZQC")
     assert window.vault_table.rowCount() == 1
     replacement = window.vault_table.item(0, 1).text()
     window.vault_search.setText(replacement)
-    assert window.vault_table.item(0, 0).text() == "IBM"
+    assert window.vault_table.item(0, 0).text() == "ZQC"
     window.switch_mode("restore")
     window.source.setPlainText(output)
     window.reviewed.setChecked(True)
@@ -51,7 +51,7 @@ def test_review_generate_lookup_restore_and_stale_preview(window, qtbot):
 
 
 def test_candidate_edit_invalidates_review(window, qtbot):
-    window.source.setPlainText("IBM")
+    window.source.setPlainText("ZQC")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
     window.reviewed.setChecked(True)
@@ -61,14 +61,14 @@ def test_candidate_edit_invalidates_review(window, qtbot):
 
 
 def test_unicode_highlight_uses_qt_positions(window, qtbot):
-    window.source.setPlainText("😀 Jane Smith")
+    window.source.setPlainText("😀 Tavi Quill")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
-    assert any(s.cursor.selectedText() == "Jane Smith" for s in window.source.extraSelections())
+    assert any(s.cursor.selectedText() == "Tavi Quill" for s in window.source.extraSelections())
 
 
 def test_no_output_released_if_vault_save_fails(window, qtbot, monkeypatch):
-    window.source.setPlainText("IBM")
+    window.source.setPlainText("ZQC")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
     def fail(): raise OSError("Disk full")
@@ -99,9 +99,9 @@ def test_multiline_manual_value_editor(qtbot):
 
 def test_multirow_shift_ctrl_and_bulk_marking(window, qtbot):
     from redactor.engine import Candidate
-    window.source.setPlainText("IBM GNMA Jane Smith")
+    window.source.setPlainText("ZQC QZRA Tavi Quill")
     window.candidates = [Candidate(value, "Custom", replacement, "test") for value, replacement in
-                         [("IBM", "XYZ"), ("GNMA", "ACME"), ("Jane Smith", "Leia Orgas")]]
+                         [("ZQC", "XYZ"), ("QZRA", "ACME"), ("Tavi Quill", "Leia Orgas")]]
     window.fill_candidates()
     def click(row, modifier=Qt.KeyboardModifier.NoModifier):
         position = window.table.visualItemRect(window.table.item(row, 1)).center()
@@ -118,7 +118,7 @@ def test_multirow_shift_ctrl_and_bulk_marking(window, qtbot):
     assert [c.selected for c in window.candidates] == [True, False, True]
     window.reviewed.setChecked(True)
     window.generate()
-    assert "GNMA" in window.output.toPlainText()
+    assert "QZRA" in window.output.toPlainText()
     # Toggling a selected row checkbox affects the highlighted group.
     qtbot.mouseClick(window.table.viewport(), Qt.MouseButton.LeftButton,
                      pos=window.table.visualItemRect(window.table.item(0, 0)).center())
@@ -149,7 +149,7 @@ def test_inner_panes_resize_independently(window, qtbot):
 
 def test_repeated_values_share_replacement_and_saved_mapping(window, qtbot):
     from redactor.engine import restore
-    text = "IBM; IBM; IBM."
+    text = "ZQC; ZQC; ZQC."
     window.source.setPlainText(text)
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
@@ -159,15 +159,15 @@ def test_repeated_values_share_replacement_and_saved_mapping(window, qtbot):
     window.generate()
     assert window.output.toPlainText().count(replacement) == 3
     assert restore(window.output.toPlainText(), window.vault.data["mappings"])[0] == text
-    window.source.setPlainText("IBM appears again. IBM.")
+    window.source.setPlainText("ZQC appears again. ZQC.")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
-    assert next(c for c in window.candidates if c.original == "IBM").replacement == replacement
+    assert next(c for c in window.candidates if c.original == "ZQC").replacement == replacement
 
 
 def test_selected_occurrence_only_and_cancel(window, qtbot, monkeypatch):
     from redactor.engine import restore
-    text = "😀 IBM / IBM / IBM"
+    text = "😀 ZQC / ZQC / ZQC"
     window.source.setPlainText(text)
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
@@ -180,7 +180,7 @@ def test_selected_occurrence_only_and_cancel(window, qtbot, monkeypatch):
     window.reviewed.setChecked(True)
     window.generate()
     replacement = window.candidates[0].replacement
-    assert window.output.toPlainText() == f"😀 {replacement} / IBM / {replacement}"
+    assert window.output.toPlainText() == f"😀 {replacement} / ZQC / {replacement}"
     assert restore(window.output.toPlainText(), window.vault.data["mappings"])[0] == text
     previous = window.output.toPlainText()
     monkeypatch.setattr(window, "ask_selection_scope", lambda rows, selected: None)
@@ -199,8 +199,8 @@ def test_real_selection_scope_dialog(window, qtbot, choice, expected):
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
     from redactor.engine import Candidate
-    window.source.setPlainText("IBM IBM")
-    window.candidates = [Candidate("IBM", "Business", "Acme R12345678", "test")]
+    window.source.setPlainText("ZQC ZQC")
+    window.candidates = [Candidate("ZQC", "Business", "Acme R12345678", "test")]
     window.fill_candidates()
     def choose():
         dialog = QApplication.activeModalWidget()
@@ -211,13 +211,13 @@ def test_real_selection_scope_dialog(window, qtbot, choice, expected):
 
 def test_ignore_saved_replacement_keeps_old_alias_after_saving(window, qtbot):
     from redactor.engine import restore
-    window.source.setPlainText("IBM IBM")
+    window.source.setPlainText("ZQC ZQC")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
     window.reviewed.setChecked(True)
     window.generate()
     old = window.candidates[0].replacement
-    window.source.setPlainText("IBM / IBM")
+    window.source.setPlainText("ZQC / ZQC")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy, timeout=30000)
     assert window.candidates[0].reason == "Saved mapping"
@@ -232,38 +232,38 @@ def test_ignore_saved_replacement_keeps_old_alias_after_saving(window, qtbot):
     window.reviewed.setChecked(True)
     window.generate()
     assert window.output.toPlainText() == f"{new} / {new}"
-    assert restore(f"{old} / {new}", window.vault.data["mappings"])[0] == "IBM / IBM"
+    assert restore(f"{old} / {new}", window.vault.data["mappings"])[0] == "ZQC / ZQC"
 
 
-@pytest.mark.parametrize("action, edited, expected", [("confirm", "Jane Smith", "Jane Smith / Jane Smith"),
-                                                      ("edit", "Janet Smith", "Janet Smith / Janet Smith"),
-                                                      ("deny", None, "jane smith / jane smith"),
-                                                      ("stop", None, "jane smith / jane smith")])
+@pytest.mark.parametrize("action, edited, expected", [("confirm", "Tavi Quill", "Tavi Quill / Tavi Quill"),
+                                                      ("edit", "Tavia Quill", "Tavia Quill / Tavia Quill"),
+                                                      ("deny", None, "tavi quill / tavi quill"),
+                                                      ("stop", None, "tavi quill / tavi quill")])
 def test_similar_original_review_actions(window, qtbot, monkeypatch, action, edited, expected):
     from redactor.engine import find_similar_values, prepare_mappings, Candidate
-    mappings, _ = prepare_mappings([Candidate("Jane Smith", "Personal name", "Leia R12345678", "test")], [], "Jane Smith")
+    mappings, _ = prepare_mappings([Candidate("Tavi Quill", "Personal name", "Leia R12345678", "test")], [], "Tavi Quill")
     window.vault.data["mappings"] = mappings
-    text = "jane smith / jane smith"
+    text = "tavi quill / tavi quill"
     matches = find_similar_values(text, mappings)
     assert len(matches) == 1
     monkeypatch.setattr(window, "resolve_similar_value", lambda match: (action, edited))
     assert window.review_similar_values(text, matches) == expected
-    assert window.vault.data["mappings"][0]["original"] == "Jane Smith"
+    assert window.vault.data["mappings"][0]["original"] == "Tavi Quill"
     if action == "deny":
-        assert ("jane smith", "Jane Smith") in window.denied_similar
+        assert ("tavi quill", "Tavi Quill") in window.denied_similar
     if action in {"confirm", "edit"}:
         assert window.vault.data["audit"][-1]["occurrences"] == 2
 
 
 def test_scan_reviews_similar_original_before_suggesting_saved_replacement(window, qtbot, monkeypatch):
     from redactor.engine import prepare_mappings, Candidate
-    mappings, _ = prepare_mappings([Candidate("Jane Smith", "Personal name", "Leia R12345678", "test")], [], "Jane Smith")
+    mappings, _ = prepare_mappings([Candidate("Tavi Quill", "Personal name", "Leia R12345678", "test")], [], "Tavi Quill")
     window.vault.data["mappings"] = mappings
     monkeypatch.setattr(window, "resolve_similar_value", lambda match: ("confirm", match.original))
-    window.source.setPlainText("Jnae Smith")
+    window.source.setPlainText("Tvai Quill")
     window.scan()
     qtbot.waitUntil(lambda: not window.busy and bool(window.candidates), timeout=30000)
-    assert window.source.toPlainText() == "Jane Smith"
+    assert window.source.toPlainText() == "Tavi Quill"
     assert window.candidates[0].replacement == "Leia R12345678"
     assert window.candidates[0].reason == "Saved mapping"
 
@@ -276,23 +276,23 @@ def test_similarity_save_failure_leaves_imported_text_unchanged(window, monkeypa
     def fail(): raise OSError("Disk full")
     monkeypatch.setattr(window.vault, "save", fail)
     before = len(window.vault.data["audit"])
-    assert window.review_similar_values("Jnae Smith", [SimilarValue("Jnae Smith", "Jane Smith", "Leia R12345678", "typo", .95)]) == "Jnae Smith"
+    assert window.review_similar_values("Tvai Quill", [SimilarValue("Tvai Quill", "Tavi Quill", "Leia R12345678", "typo", .95)]) == "Tvai Quill"
     assert errors and len(window.vault.data["audit"]) == before
 
 
 def test_database_tabs_keep_independent_workspaces(window, qtbot, monkeypatch):
     from redactor.databases import add_database
-    window.source.setPlainText('IBM')
+    window.source.setPlainText('ZQC')
     db=add_database(window.account_vault,'Second database')
     window.open_databases.append(db)
     window.database_tabs.addTab('Second database')
     window.database_tabs.setCurrentIndex(1)
     assert window.source.toPlainText()==''
-    window.source.setPlainText('GNMA')
+    window.source.setPlainText('QZRA')
     window.database_tabs.setCurrentIndex(0)
-    assert window.source.toPlainText()=='IBM'
+    assert window.source.toPlainText()=='ZQC'
     window.database_tabs.setCurrentIndex(1)
-    assert window.source.toPlainText()=='GNMA'
+    assert window.source.toPlainText()=='QZRA'
     assert window.vault is db
 
 

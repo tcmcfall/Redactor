@@ -1,11 +1,11 @@
 SYNTHETIC EDGE-CASE EXERCISE
 
-😀 Jane Smith met Jane Smithson. Jane Smith is a different exact value from Jane Smithson.
-The example uses IBM, IBMx and International Business Machines.
-Repeated value: Jane Smith, Jane Smith, Jane Smith.
+😀 Tavi Quill met Tavi Quillson. Tavi Quill is a different exact value from Tavi Quillson.
+The example uses ZQC, ZQCx and Zephyr Quill Company.
+Repeated value: Tavi Quill, Tavi Quill, Tavi Quill.
 
-Names for manual review: José Álvarez; Zoë D'Arcy; 李明; Ольга Иванова.
-Lowercase spelling for manual review: jane smith.
+Names for manual review: Néro Lúmivex; Zoë Quill; 露米星; Луми Зефир.
+Lowercase spelling for manual review: tavi quill.
 Non-English project name for manual review: 東京の研究.
 
 Punctuation exercise: host-alpha.training.invalid, 10.20.30.40.

@@ -636,7 +636,7 @@ class MainWindow(AnalystActions, QMainWindow):
         self.scan()
 
     def source_information(self):
-        QMessageBox.information(self, "License & source code", "Redactor 0.2.0 is free software under GPL version 3 or later, without warranty. You may study, modify and redistribute it under the license terms.\n\nNative packages include source/Redactor-0.2.0-source.zip beside the application (on macOS, inside Contents/Resources). It contains application code, tests, the User Guide and build scripts. See LICENSE and SOURCE-DISTRIBUTION.md in the package.\n\nFrom a source checkout, run python scripts/package_source.py to create an updated source package. Third-party libraries retain their own licenses and notices.")
+        QMessageBox.information(self, "License & source code", "Redactor 0.2.1 is free software under GPL version 3 or later, without warranty. You may study, modify and redistribute it under the license terms.\n\nNative packages include source/Redactor-0.2.1-source.zip beside the application (also beside Redactor.app in the macOS portable folder). It contains application code, tests, the User Guide and build scripts. See LICENSE and SOURCE-DISTRIBUTION.md in the package.\n\nFrom a source checkout, run python scripts/package_source.py to create an updated source package. Third-party libraries retain their own licenses and notices.")
 
     def user_guide(self):
         from importlib.resources import files

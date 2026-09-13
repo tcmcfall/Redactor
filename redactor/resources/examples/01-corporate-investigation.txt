@@ -1,14 +1,14 @@
 FICTIONAL TRAINING DATA — NOT A REAL INCIDENT
 
-Jane Smith at Nimbus Lantern Corporation reviewed a synthetic integration with International Business Machines (IBM).
-GinnieMae and GNMA are public-name examples used only to practice business abbreviation detection.
+Tavi Quill at Nimbus Lantern Corporation reviewed a synthetic integration with Zephyr Quill Company (ZQC).
+MossQuill and QZRA are invented training labels used to practice organization and abbreviation detection.
 
 The fictional host finance-prod.training.invalid accepted a connection from 10.24.8.12.
 A second connection from 10.24.8.12 reached backup-node.training.invalid.
-Jane Smith asked Alex Morgan to compare both events before preparing a report.
+Tavi Quill asked Orin Bramble to compare both events before preparing a report.
 
 Internal project: Project Paper Lantern
 Training case: CASE-DEMO-2048
-Action: Prepare a timeline, identify the systems involved, and list questions for Jane Smith.
+Action: Prepare a timeline, identify the systems involved, and list questions for Tavi Quill.
 
 No actual organization, person or host is involved in this invented scenario.

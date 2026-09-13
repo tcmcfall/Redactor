@@ -57,13 +57,13 @@ def test_source_metadata_does_not_survive_export(tmp_path):
     original, output = tmp_path / "original.docx", tmp_path / "output.docx"
     doc = Document()
     doc.core_properties.author = "SENSITIVE AUTHOR"
-    doc.add_paragraph("Jane Smith")
+    doc.add_paragraph("Tavi Quill")
     doc.save(original)
-    assert "Jane Smith" in read_file(original).text
+    assert "Tavi Quill" in read_file(original).text
     export_file(output, "Leia Organa R1234ABCD")
     with zipfile.ZipFile(output) as archive:
         raw = b"".join(archive.read(name) for name in archive.namelist())
-    assert b"SENSITIVE AUTHOR" not in raw and b"Jane Smith" not in raw
+    assert b"SENSITIVE AUTHOR" not in raw and b"Tavi Quill" not in raw
 
 
 def test_no_silent_image_truncation(tmp_path):
@@ -86,7 +86,7 @@ def test_pdf_export_creates_nested_destination(tmp_path, qapp):
 
 
 def test_pdf_roundtrip_does_not_add_page_numbers(tmp_path, qapp):
-    text = "\n".join(f"Evidence row {number:03d}: IBM XYZ" for number in range(150))
+    text = "\n".join(f"Evidence row {number:03d}: ZQC XYZ" for number in range(150))
     path = tmp_path / 'paginated.pdf'
     export_file(path, text)
     assert read_file(path).text.splitlines() == text.splitlines()

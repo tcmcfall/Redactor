@@ -1,6 +1,6 @@
 [project]
 name = "redactor-local"
-version = "0.2.0"
+version = "0.2.1"
 description = "Local, reversible sensitive-data substitution desktop application"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE", "THIRD-PARTY-NOTICES.md"]

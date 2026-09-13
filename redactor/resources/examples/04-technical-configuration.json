@@ -1,8 +1,8 @@
 {
   "training_only": true,
   "organization": "Moonbeam Systems LLC",
-  "owner": "Alex Morgan",
-  "contact": "alex@example.invalid",
+  "owner": "Orin Bramble",
+  "contact": "orin@example.invalid",
   "primary_host": "api-prod.training.invalid",
   "short_host": "db-primary",
   "bare_hostname_manual_review": "localhost",

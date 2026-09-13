@@ -14,7 +14,7 @@ from package_source import manifest
 
 
 def download(url, destination, expected=None):
-    request = urllib.request.Request(url, headers={"User-Agent": "Redactor-source-packager/0.2.0"})
+    request = urllib.request.Request(url, headers={"User-Agent": "Redactor-source-packager/0.2.1"})
     digest = hashlib.sha256()
     with urllib.request.urlopen(request, timeout=90) as response, destination.open("wb") as output:
         while block := response.read(1024 * 1024):

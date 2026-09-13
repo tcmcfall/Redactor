@@ -1,7 +1,7 @@
 SYNTHETIC PERSONAL RECORD — NOT A REAL CUSTOMER
 
-Name: Elena Brooks
-Email: elena.brooks@example.invalid
+Name: Neri Mosswick
+Email: neri.mosswick@example.invalid
 Employer: Silver Acorn Company
 
 Invalid SSN-shaped training identifier: 000-12-3456
@@ -16,5 +16,5 @@ Invented address: 42 Imaginary Lane, Example Town
 Medical-style free text: Patient prefers a quiet room.
 Custom account code: DEMO-ACCOUNT-ORCHID
 
-Elena Brooks requests an accurate summary with all sensitive values restored only in the local final report.
+Neri Mosswick requests an accurate summary with all sensitive values restored only in the local final report.
 No real personal record is represented here. All examples are for offline software testing.

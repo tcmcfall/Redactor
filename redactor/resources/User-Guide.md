@@ -1,4 +1,4 @@
-# Redactor User Guide — version 0.2.0
+# Redactor User Guide — version 0.2.1
 
 Redactor substitutes reviewed sensitive values locally and restores unchanged substitutes later. The desktop and CLI share the same encrypted databases and conversion rules. Detection is heuristic: review the entire input, not just suggested fields.
 
@@ -100,12 +100,12 @@ Redactor-cli --user Analyst reminder on
 Redactor-cli --user Analyst import evidence.docx exports/editable.txt
 Redactor-cli --user Analyst scan exports/editable.txt exports/review.json
 Redactor-cli --user Analyst review exports/review.json --kind Email --state sensitive
-Redactor-cli --user Analyst review exports/review.json --original IBM --replacement XYZ
-Redactor-cli --user Analyst review exports/review.json --original IBM --state insensitive --starts 42
+Redactor-cli --user Analyst review exports/review.json --original ZQC --replacement XYZ
+Redactor-cli --user Analyst review exports/review.json --original ZQC --state insensitive --starts 42
 Redactor-cli --user Analyst review exports/review.json --add --original ABC --kind Custom --replacement DEF
-Redactor-cli --user Analyst near exports/review.json "jane smith" "Jane Smith" confirm
-Redactor-cli --user Analyst near exports/review.json "Jane Smiht" "Jane Smith" edit --value "Jane Smith"
-Redactor-cli --user Analyst near exports/review.json "Jane Smiht" "Jane Smith" deny
+Redactor-cli --user Analyst near exports/review.json "tavi quill" "Tavi Quill" confirm
+Redactor-cli --user Analyst near exports/review.json "Tavi Qulil" "Tavi Quill" edit --value "Tavi Quill"
+Redactor-cli --user Analyst near exports/review.json "Tavi Qulil" "Tavi Quill" deny
 Redactor-cli --user Analyst redact exports/review.json exports/obfuscated.docx --reviewed
 Redactor-cli --user Analyst restore exports/returned.txt exports/report.docx --reviewed
 Redactor-cli --user Analyst lookup --kind Email --sort replacement --descending

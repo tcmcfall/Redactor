@@ -80,7 +80,7 @@ def test_backup_is_portable(tmp_path):
 def test_audit_snapshots_do_not_change_after_in_place_edits(tmp_path):
     import copy, hashlib, json
     vault = Vault.create(tmp_path, 'Audit analyst', 'Synthetic audit passphrase')
-    mapping = {'id':'one', 'original':'IBM', 'replacement':'XYZ', 'kind':'Business'}
+    mapping = {'id':'one', 'original':'ZQC', 'replacement':'XYZ', 'kind':'Business'}
     vault.data['mappings'] = [mapping]
     details = {'selected':['one']}
     vault.commit('created_mapping', detail=details)

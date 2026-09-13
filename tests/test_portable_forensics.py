@@ -31,16 +31,22 @@ def test_relationship_edits_rejected():
 @pytest.mark.parametrize('suffix',['.zip','.tar','.7z','.zip7'])
 def test_encrypted_exchange_hashes_import_and_wrong_password(tmp_path,suffix):
     vault=Vault.create(tmp_path,'Alice','Very long local password')
-    mappings,_=prepare_mappings([Candidate('IBM','Business','XYZ','manual')],[],'IBM',strict=True)
+    mappings,_=prepare_mappings([Candidate('ZQC','Business','XYZ','manual')],[],'ZQC',strict=True)
     vault.data['mappings']=mappings
-    audit_text(vault,'redacted','IBM','XYZ',mapping_ids=[mappings[0]['id']])
+    audit_text(vault,'redacted','ZQC','XYZ',mapping_ids=[mappings[0]['id']])
     path=tmp_path/('exchange'+suffix)
     vault.export_exchange(path,'Different export password')
     payload=unpack(path)
-    assert b'"original": "IBM"' not in payload and b'Very long' not in payload
+    assert b'"original": "ZQC"' not in payload and b'Very long' not in payload
     imported=Vault.import_exchange(path,'Different export password',tmp_path,'Bob','Bobs secure local password')
     assert imported.data['mappings']==mappings
-    assert imported.data['imported_audit'][-2]['text_changes'][0]['before']=='IBM'
+    event = imported.data['imported_audit'][-2]
+    assert event['input_text'] == 'ZQC' and event['output_text'] == 'XYZ'
+    reconstructed = event['input_text']
+    for change in reversed(event['text_changes']):
+        assert event['input_text'][change['input_start']:change['input_end']] == change['before']
+        reconstructed = reconstructed[:change['input_start']] + change['after'] + reconstructed[change['input_end']:]
+    assert reconstructed == event['output_text']
     assert imported.data['audit'][-1]['user']=='Bob'
     with pytest.raises(ValueError,match='R009'): Vault.import_exchange(path,'Wrong password',tmp_path,'Eve','Eves secure local password')
     assert Vault.open(tmp_path,'Alice','Very long local password')
@@ -85,7 +91,7 @@ def test_multiple_databases_encrypted_and_merge_atomic(tmp_path):
     from redactor.databases import add_database, Database, merge_mappings
     account=Vault.create(tmp_path,'Analyst','Very long local password')
     first=add_database(account,'Case A')
-    first.data['mappings'],_=prepare_mappings([Candidate('IBM','Business','XYZ','manual')],[],'IBM',strict=True)
+    first.data['mappings'],_=prepare_mappings([Candidate('ZQC','Business','XYZ','manual')],[],'ZQC',strict=True)
     first.commit('test')
     second=add_database(account,'Case B')
     second.data['mappings']=merge_mappings([],first.data['mappings']);second.commit('merge')
@@ -93,9 +99,9 @@ def test_multiple_databases_encrypted_and_merge_atomic(tmp_path):
     conflicting=[{**first.data['mappings'][0],'replacement':'DEF'}]
     with pytest.raises(ValueError,match='R012'):merge_mappings(second.data['mappings'],conflicting)
     assert second.data['mappings'][0]['replacement']=='XYZ'
-    result=merge_mappings(second.data['mappings'],conflicting,{'IBM':'incoming'})
+    result=merge_mappings(second.data['mappings'],conflicting,{'ZQC':'incoming'})
     assert result[0]['replacement']=='DEF' and result[0]['aliases']==['XYZ']
-    raw=account.path.read_bytes();assert b'"original": "IBM"' not in raw and b'Case A' not in raw
+    raw=account.path.read_bytes();assert b'"original": "ZQC"' not in raw and b'Case A' not in raw
     reopened=Vault.open(tmp_path,'Analyst','Very long local password')
     restored=Database(reopened,first.database_id)
     assert restored.data['mappings']==first.data['mappings']
@@ -113,9 +119,9 @@ def test_terminal_table_edit_roundtrip():
 
 def test_merge_repeated_conflicts_use_individual_decisions():
     from redactor.databases import merge_mappings
-    base={'id':'one','original':'IBM','replacement':'ABC','kind':'Business','aliases':[],'created':'2026'}
+    base={'id':'one','original':'ZQC','replacement':'ABC','kind':'Business','aliases':[],'created':'2026'}
     incoming=[{**base,'replacement':'DEF'},{**base,'replacement':'GHI'}]
-    result=merge_mappings([base],incoming,{'0:IBM':'incoming','1:IBM':'keep'})
+    result=merge_mappings([base],incoming,{'0:ZQC':'incoming','1:ZQC':'keep'})
     assert result[0]['replacement']=='DEF' and result[0]['aliases']==['ABC']
 def test_creator_only_password_and_imported_copy_ownership(tmp_path):
     from redactor.databases import add_database, Database
@@ -123,7 +129,7 @@ def test_creator_only_password_and_imported_copy_ownership(tmp_path):
     alice = Vault.create(tmp_path, 'Alice', 'Alice creator password')
     bob = Vault.create(tmp_path, 'Bob', 'Bob creator password')
     case = add_database(alice, 'Alice investigation')
-    case.data['mappings'], _ = prepare_mappings([Candidate('IBM','Business','XYZ','manual')], [], 'IBM', strict=True)
+    case.data['mappings'], _ = prepare_mappings([Candidate('ZQC','Business','XYZ','manual')], [], 'ZQC', strict=True)
     case.commit('mapping_created')
     with pytest.raises(ValueError): Vault.open(tmp_path, 'Alice', 'Bob creator password')
     exchange = tmp_path / 'exchange.zip'
@@ -135,7 +141,7 @@ def test_creator_only_password_and_imported_copy_ownership(tmp_path):
     with pytest.raises(ValueError): Vault.open(tmp_path, 'Bob', 'Alice creator password')
     with pytest.raises(ValueError): Vault.open(tmp_path, 'Bob', 'Separate export password')
     reopened = Vault.open(tmp_path, 'Bob', 'Bob creator password')
-    assert Database(reopened, imported.database_id).data['mappings'][0]['original'] == 'IBM'
+    assert Database(reopened, imported.database_id).data['mappings'][0]['original'] == 'ZQC'
     reopened.data['databases']['foreign'] = copy.deepcopy(case.data)
     with pytest.raises(ValueError, match='another creator'): reopened.save()
 def test_database_folders_hash_users_and_keep_separate_encrypted_copies(tmp_path):

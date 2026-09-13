@@ -8,8 +8,8 @@ You may study, modify and redistribute Redactor under those terms. Preserve copy
 
 `scripts/build.py` places a versioned source archive alongside every native application it builds:
 
-- Windows/Linux: `Redactor/source/Redactor-0.2.0-source.zip`
-- macOS: `Redactor-portable/source/Redactor-0.2.0-source.zip`
+- Windows/Linux: `Redactor/source/Redactor-0.2.1-source.zip`
+- macOS: `Redactor-portable/source/Redactor-0.2.1-source.zip`
 
 The archive contains the complete Redactor application source, resources, tests, packaging scripts, platform workflows, user documentation, license notices, dependency information and build instructions. It excludes user vaults, imported documents, credentials, caches and binary build output. `SOURCE-SHA256.json` records each application's source-file hash, and a SHA-256 file accompanies the archive.
 

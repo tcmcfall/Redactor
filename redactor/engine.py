@@ -223,8 +223,8 @@ def detect(text: str, mappings: list[dict]) -> list[Candidate]:
     add(r"\b[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "Email", "Email address")
     add(r"(?<![\w@.-])(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[A-Za-z]{2,63}\b", "Hostname", "Domain or fully qualified hostname")
     add(r"\b[A-Za-z]+(?:-[A-Za-z0-9]+)+\b", "Hostname", "Possible short hostname; review")
-    add(r"\b(?:International Business Machines|IBM|Ginnie\s?Mae|GNMA|Microsoft|Google|Amazon|Apple|OpenAI)\b", "Business", "Business dictionary", re.I)
     add(r"\b(?:[A-Z][\w&'-]*[ \t]+){1,5}(?:Inc\.?|LLC|Ltd\.?|Corporation|Corp\.?|Company|Industries|Bank|Agency)\b", "Business", "Organization suffix; review")
+    add(r"\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b", "Business", "Possible mixed-case organization or product name; review")
     add(r"\b[A-Z][A-Z0-9&]{1,9}\b", "Business", "Possible business abbreviation; review")
     add(r"\b[A-Z][a-z]+(?:['’-][A-Z]?[a-z]+)?(?:[ \t]+(?:[A-Z]\.\s*)?[A-Z][a-z]+(?:['’-][A-Z]?[a-z]+)?){1,2}\b", "Personal name", "Possible personal name; review")
     forbidden = [text, *found] + [v for m in mappings for v in [m["original"], m["replacement"], *m.get("aliases", [])]]

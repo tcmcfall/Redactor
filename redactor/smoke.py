@@ -23,7 +23,7 @@ def run(output_directory):
         with tempfile.TemporaryDirectory(prefix="redactor-smoke-") as temporary:
             directory = Path(temporary)
             vault = Vault.create(directory, "Synthetic test", "Synthetic test passphrase only")
-            text = "Jane Smith at IBM uses 10.2.3.4. Identifier 000-12-3456."
+            text = "Tavi Quill at ZQC uses 10.2.3.4. Identifier 000-12-3456."
             window = MainWindow(vault)
             window.source.setPlainText(text)
             window.candidates = detect(text, [])
@@ -32,14 +32,14 @@ def run(output_directory):
             window.generate()
             assert window.has_output
             obfuscated = window.output.toPlainText()
-            assert "Jane Smith" not in obfuscated and "10.2.3.4" not in obfuscated
+            assert "Tavi Quill" not in obfuscated and "10.2.3.4" not in obfuscated
             assert restore(obfuscated, vault.data["mappings"])[0] == text
             report["checks"].append("encrypted mapping + exact roundtrip")
             window.show()
             app.processEvents()
             window.grab().save(str(output / "packaged-workspace.png"))
             window.show_page(1)
-            window.vault_search.setText("IBM")
+            window.vault_search.setText("ZQC")
             assert window.vault_table.rowCount() == 1
             report["checks"].append("value lookup")
             for extension in [".txt", ".pdf", ".docx", ".xlsx", ".pptx", ".rtf", ".odt", ".ods", ".odp"]:
